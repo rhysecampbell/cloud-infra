@@ -1,0 +1,11 @@
+---
+## The 4 parameters below reference the version number of the dqmweb/dqmapp .war's that should
+## be fetched from https://nexus.vaisala.com
+dqm_major: 1
+dqm_minor: 25
+dqm_patch: 6
+dqm_meta: RELEASE
+
+## Don't touch the following:
+dqm_repository: "{{ 'vaisala' if dqm_meta in ('RELEASE', 'RC')  else 'vaisala-snapshots' if dqm_meta == 'SNAPSHOT'}}"
+dqm_version: "{{ dqm_major }}.{{ dqm_minor }}.{{ dqm_patch }}-{{ dqm_meta }}"

@@ -1,0 +1,172 @@
+- name: Copy csv's
+  copy:
+    src: triton_{{ item }}.csv
+    dest: /opt/schemas/triton_{{ item }}.csv
+  with_items:
+      - customers
+      - sensors
+
+- name: Install triton-customers.py
+  template:
+    src: triton-customers.py.j2
+    dest: /opt/schemas/triton-customers.py
+    mode: 0755
+
+- name: Run triton-customers.py
+  shell: /opt/schemas/triton-customers.py && touch /opt/schemas/triton_customers.csv.done
+  args:
+    creates: /opt/schemas/triton_customers
+    chdir: /opt/schemas
+
+- name: Install sensors
+  shell: psql qualmon2 -c "COPY qm.sensor_master_identity(symbol, codespace, error_value, multiplier, creation_date, monitored, fault_count_threshold, sensor_stuck_minutes) FROM '/opt/schemas/triton_sensors.csv' (DELIMITER ',');" && touch /opt/schemas/triton_sensors.csv.done
+  args:
+    creates: /opt/schemas/triton_sensors.csv.done
+    chdir: /opt/schemas
+  become_user: postgres
+
+- name: Install sensor groups
+  shell: psql qualmon2 -c "INSERT INTO qm.sensor_group (sensor_group_name, display_order) VALUES ('Sensors', 2), ('Data Quality', 0), ('Wind Profile', 1), ('Other Quality', 3);" && touch /opt/schemas/triton_sensor_groups.done
+  args:
+    creates: /opt/schemas/triton_sensor_groups.done
+  become_user: postgres
+
+- name: Add aliases
+  shell: psql qualmon2 -c "INSERT INTO qm.sensor_alias (sensor_alias, sensor_group_display_order, sensor_group_id) VALUES ('{{ item.sensor }}', {{ item.order }}, (SELECT sensor_group_id FROM qm.sensor_group WHERE sensor_group_name='{{ item.group }}'));" && touch /opt/schemas/triton_sensor_alias_{{ item.sensor|checksum }}.done
+  with_items:
+    - {sensor: 'Ambient Temp', order: 0, group: 'Sensors'}
+    - {sensor: 'Barometric Pressure', order: 3, group: 'Sensors'}
+    - {sensor: 'Number of Shots-A 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'Number of Shots-B 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'Number of Shots-C 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'SNR-A 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'SNR-B 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'SNR-C 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'Valid Spectra-A 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'Valid Spectra-B 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'Valid Spectra-C 120m', order: 'NULL', group: 'Data Quality'}
+    - {sensor: 'WS 30m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 40m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 50m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 60m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 80m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 100m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 120m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 140m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 160m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 180m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'WS 200m', order: 'NULL', group: 'Wind Profile'}
+    - {sensor: 'Internal Temp', order: 1, group: 'Sensors'}
+    - {sensor: 'Mirror Temp', order: 2, group: 'Sensors'}
+    - {sensor: 'Battery', order: 4, group: 'Sensors'}
+    - {sensor: 'Beep Volume', order: 5, group: 'Sensors'}
+    - {sensor: 'Noise Level-A', order: 7, group: 'Sensors'}
+    - {sensor: 'Noise Level-B', order: 8, group: 'Sensors'}
+    - {sensor: 'Noise Level-C', order: 9, group: 'Sensors'}
+    - {sensor: 'TiltX', order: 10, group: 'Sensors'}
+    - {sensor: 'TiltY', order: 11, group: 'Sensors'}
+    - {sensor: 'QF 30m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 40m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 50m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 60m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 80m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 100m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 140m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 160m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 180m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 200m', order: 'NULL', group: 'Other Quality'}
+    - {sensor: 'QF 120m', order: 'NULL', group: 'Data Quality'}
+  args:
+    creates: /opt/schemas/triton_sensor_alias_{{ item.sensor|checksum }}.done
+  become_user: postgres
+
+- name: Add real aliases
+  shell: psql qualmon2 -c "update qm.sensor_master_identity SET sensor_alias_id=(SELECT sensor_alias_id FROM qm.sensor_alias WHERE sensor_alias='{{ item.sensor_alias }}') WHERE symbol='{{ item.symbol }}';" && touch /opt/schemas/triton_real_sensor_alias_{{ item.symbol }}.done
+  with_items:
+    - {symbol: 'TRITON_120m_Number_of_Shots_A', sensor_alias: 'Number of Shots-A 120m'}
+    - {symbol: 'TRITON_30m_Wind_Speed', sensor_alias: 'WS 30m'}
+    - {symbol: 'TRITON_160m_Wind_Speed', sensor_alias: 'WS 160m'}
+    - {symbol: 'TRITON_120m_Number_of_Shots_B', sensor_alias: 'Number of Shots-B 120m'}
+    - {symbol: 'TRITON_120m_SNR_A', sensor_alias: 'SNR-A 120m'}
+    - {symbol: 'TRITON_120m_SNR_B', sensor_alias: 'SNR-B 120m'}
+    - {symbol: 'TRITON_120m_SNR_C', sensor_alias: 'SNR-C 120m'}
+    - {symbol: 'TRITON_120m_Valid_Spectra_A', sensor_alias: 'Valid Spectra-A 120m'}
+    - {symbol: 'TRITON_120m_Valid_Spectra_B', sensor_alias: 'Valid Spectra-B 120m'}
+    - {symbol: 'TRITON_120m_Valid_Spectra_C', sensor_alias: 'Valid Spectra-C 120m'}
+    - {symbol: 'TRITON_120m_Number_of_Shots_C', sensor_alias: 'Number of Shots-C 120m'}
+    - {symbol: 'TRITON_120m_Quality', sensor_alias: 'QF 120m'}
+    - {symbol: 'TRITON_100m_Wind_Speed', sensor_alias: 'WS 100m'}
+    - {symbol: 'TRITON_120m_Wind_Speed', sensor_alias: 'WS 120m'}
+    - {symbol: 'TRITON_140m_Quality', sensor_alias: 'QF 140m'}
+    - {symbol: 'TRITON_160m_Quality', sensor_alias: 'QF 160m'}
+    - {symbol: 'TRITON_30m_Quality', sensor_alias: 'QF 30m'}
+    - {symbol: 'TRITON_180m_Quality', sensor_alias: 'QF 180m'}
+    - {symbol: 'TRITON_200m_Quality', sensor_alias: 'QF 200m'}
+    - {symbol: 'TRITON_Battery', sensor_alias: 'Battery'}
+    - {symbol: 'TRITON_Beep_Volume', sensor_alias: 'Beep Volume'}
+    - {symbol: 'TRITON_40m_Quality', sensor_alias: 'QF 40m'}
+    - {symbol: 'TRITON_40m_Wind_Speed', sensor_alias: 'WS 40m'}
+    - {symbol: 'TRITON_50m_Wind_Speed', sensor_alias: 'WS 50m'}
+    - {symbol: 'TRITON_200m_Wind_Speed', sensor_alias: 'WS 200m'}
+    - {symbol: 'TRITON_50m_Quality', sensor_alias: 'QF 50m'}
+    - {symbol: 'TRITON_60m_Quality', sensor_alias: 'QF 60m'}
+    - {symbol: 'TRITON_Barometric_Pressure', sensor_alias: 'Barometric Pressure'}
+    - {symbol: 'TRITON_80m_Wind_Speed', sensor_alias: 'WS 80m'}
+    - {symbol: 'TRITON_140m_Wind_Speed', sensor_alias: 'WS 140m'}
+    - {symbol: 'TRITON_60m_Wind_Speed', sensor_alias: 'WS 60m'}
+    - {symbol: 'TRITON_Internal_Temp', sensor_alias: 'Internal Temp'}
+    - {symbol: 'TRITON_180m_Wind_Speed', sensor_alias: 'WS 180m'}
+    - {symbol: 'TRITON_Mirror_Temp', sensor_alias: 'Mirror Temp'}
+    - {symbol: 'TRITON_Ambient_Temp', sensor_alias: 'Ambient Temp'}
+    - {symbol: 'TRITON_Humidity', sensor_alias: 'Humidity'}
+    - {symbol: 'TRITON_TiltY', sensor_alias: 'TiltY'}
+    - {symbol: 'TRITON_100m_Quality', sensor_alias: 'QF 100m'}
+    - {symbol: 'TRITON_80m_Quality', sensor_alias: 'QF 80m'}
+    - {symbol: 'TRITON_TiltX', sensor_alias: 'TiltX'}
+    - {symbol: 'TRITON_Noise_Level_A', sensor_alias: 'Noise Level-A'}
+    - {symbol: 'TRITON_Noise_Level_B', sensor_alias: 'Noise Level-B'}
+    - {symbol: 'TRITON_Noise_Level_C', sensor_alias: 'Noise Level-C'}
+  args:
+    creates: /opt/schemas/triton_real_sensor_alias_{{ item.symbol }}.done
+  become_user: postgres
+
+- name: Add range checks
+  shell: psql qualmon2 -c "INSERT INTO qm.sensor_range_check (sensor_master_id, min_value, max_value) VALUES ((SELECT sensor_master_id FROM qm.sensor_master_identity WHERE symbol = '{{ item.symbol }}'), '{{ item.min_value }}', {{ item.max_value }});" && touch /opt/schemas/triton_sensor_range_check_{{ item.symbol }}.done
+  with_items:
+    - {symbol: 'TRITON_Battery', min_value: 11.4, max_value: 17.0}
+  args:
+    creates: /opt/schemas/triton_sensor_range_check_{{ item.symbol }}.done
+  become_user: postgres
+
+- name: Update sensor thresholds.
+  shell: psql -w -U postgres -d qualmon2 -c "UPDATE qm.sensor_master_identity SET sensor_stuck_minutes={{ item.sensor_stuck_minutes }}, fault_count_threshold={{ item.fault_count_threshold }} WHERE symbol='{{ item.symbol }}'" && touch /opt/schemas/triton_thresholds_{{ item.symbol }}.1
+  with_items:
+      - { symbol: 'TRITON_TiltX', sensor_stuck_minutes: 10080, fault_count_threshold: 144 }
+      - { symbol: 'TRITON_TiltY', sensor_stuck_minutes: 10080, fault_count_threshold: 144 }
+      - { symbol: 'TRITON_Ambient_Temp', sensor_stuck_minutes: 0, fault_count_threshold: 144 }
+      - { symbol: 'TRITON_Barometric_Pressure', sensor_stuck_minutes: 0, fault_count_threshold: 36 }
+      - { symbol: 'TRITON_Humidity', sensor_stuck_minutes: 0, fault_count_threshold: 36 }
+      - { symbol: 'TRITON_Internal_Temp', sensor_stuck_minutes: 0, fault_count_threshold: 72 }
+      - { symbol: 'TRITON_Battery', sensor_stuck_minutes: 0, fault_count_threshold: 1 }
+  args:
+    creates: /opt/schemas/triton_thresholds_{{ item.symbol }}.1
+  become_user: postgres
+
+- name: Add cross check error codes
+  shell: psql qualmon2 -c "INSERT INTO qmfault.fault_type (fault_name, error_code, time_buffer) VALUES('{{ item.fault_name }}', '{{ item.error_code }}', 36);" && touch /opt/schemas/triton_fault_type-{{ item.error_code }}
+  with_items:
+      - {error_code: -304, fault_name: 'RunController or Configuration Error'}
+      - {error_code: -303, fault_name: 'Fixed Echo or Noise'}
+      - {error_code: -302, fault_name: 'Sensor Error'}
+      - {error_code: -305, fault_name: 'High Ambient Noise'}
+  args:
+      creates: /opt/schemas/triton_fault_type-{{ item.error_code }}
+  become_user: postgres
+
+- name: Add Responsible Parties.
+  shell: psql qualmon2 -c "INSERT INTO qmfault.fault_resp (fault_resp) VALUES('{{ item }}');" && touch /opt/schemas/triton_fault_resp_{{ item|checksum }}
+  with_items:
+      - "PAS Wind Energy Systems Global"
+  args:
+      creates: /opt/schemas/triton_fault_resp_{{ item|checksum }}
+  become_user: postgres

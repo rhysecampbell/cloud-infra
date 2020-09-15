@@ -1,0 +1,176 @@
+---
+- name: Yum Packages.
+  yum: name={{ item }} state=installed
+  with_items:
+    - zlib-devel
+    - libxml2-devel
+    - pax
+    - gcc
+    - ksh
+    - perl-Geo-METAR
+    - python-psycopg2
+    - python-pip
+
+- name: Copy ScientificPython package
+  copy: src=ScientificPython-2.8-15.el6.x86_64.rpm dest=/opt/ScientificPython-2.8-15.el6.x86_64.rpm
+
+- name: Install ScientificPython package
+  yum: name=/opt/ScientificPython-2.8-15.el6.x86_64.rpm state=present
+
+- name: install other python packages
+  pip: name={{ item }} state=present
+  with_items:
+    - requests_futures
+
+- name: ldm user
+  user: name=ldm
+
+- name: vaisala user
+  user: name=vaisala
+
+- name: vaisala bin directory
+  file: path={{ item }} owner=vaisala group=vaisala state=directory mode=0755
+  with_items:
+    - ~vaisala/
+    - ~vaisala/bin
+
+- name: sendcc symlink
+  file: path=~vaisala/bin/sendcc src=/usr/local/bin/sendcc state=link
+
+- name: copy ldm archive
+  copy: src=ldm-{{ ldm_version }}.tar.gz dest=~ldm/ldm-{{ ldm_version }}.tar.gz
+
+- name: unarchive
+  shell: gunzip -c ~ldm/ldm-{{ ldm_version }}.tar.gz | pax -r '-s:/:/src/:'
+  args:
+      creates: ~ldm/ldm-{{ ldm_version }}/src
+  become_user: ldm
+
+- name: ./configure
+  command: ./configure
+  args:
+      creates: ~ldm/ldm-{{ ldm_version }}/src/config.h
+      chdir: ~ldm/ldm-{{ ldm_version }}/src
+  become_user: ldm
+
+- name: make install
+  command: make install
+  args:
+      creates: ~ldm/ldm-{{ ldm_version }}/bin
+      chdir: ~ldm/ldm-{{ ldm_version }}/src
+  become_user: ldm
+
+- name: link new runtime
+  file: path=~ldm/runtime src=~ldm/ldm-{{ ldm_version }} state=link owner=ldm group=ldm
+  notify: restart ldm
+
+# This replaces the "install_setuids" make target.
+- name: make install_setuids
+  file: path=~ldm/ldm-{{ ldm_version }}/bin/{{ item }} state=file owner=root mode=4775
+  with_items:
+    - ldmd
+    - hupsyslog
+
+- name: pqact config
+  copy: src=pqact.conf dest=~ldm/etc/pqact.conf owner=ldm group=ldm
+  notify: restart ldm
+
+- name: ldmd.conf
+  template: src=ldmd.conf.j2 dest=~ldm/etc/ldmd.conf owner=ldm group=ldm
+  notify: restart ldm
+
+- name: Create Directories
+  file: path={{ item }} state=directory owner=ldm group=ldm
+  with_items:
+    - ~ldm/var/data/surface
+    - ~ldm/var/data/surface/work
+    - ~ldm/var/data/surface/work/metarchive
+    - ~ldm/var/data/surface/work/carved
+    - ~ldm/var/data/surface/work/log
+    - ~ldm/var/data/surface/work/xml
+    - ~ldm/var/data/surface/work/upload-archive
+    - ~ldm/var/data/surface/work/sendcc-completed
+    - ~ldm/var/data/surface/work/python
+    - ~ldm/var/data/surface/work/python/logs
+    - ~ldm/var/data/surface/work/python/outputdir
+    - ~ldm/parsing.scripts/madis
+    - ~ldm/var/data/madis
+    - ~ldm/var/data/madis/mesonet
+    - ~ldm/var/data/madis/mesonet/netcdf
+    - ~ldm/.ssh
+
+- name: check sendcc log file exists
+  stat: path=/var/log/sendcc/metar.log get_checksum=False get_md5=False
+  register: metarlogfile
+
+- name: Ensure sendcc log file exists
+  file: path=/var/log/sendcc/metar.log owner=ldm group=ldm state=touch
+  when: not metarlogfile.stat.exists  or metarlogfile.stat.pw_name != "ldm"
+
+- name: Copy metar2xml scripts
+  copy: src=metar2xml/{{ item }} dest=~ldm/var/data/surface/work/{{ item }} owner=ldm group=ldm mode=0755
+  with_items:
+    - keepAlive.ksh
+    - parseLoop.sh
+    - parseAll.pl
+    - python/collectivebuster.py
+    - fileSlicer.ksh
+    - metar2xml.pl
+    - counter.pl
+    - python/filewriterclass.py
+
+- name: Copy metar2xml config
+  copy: src=metar2xml/{{ item }} dest=~ldm/var/data/surface/work/{{ item }} owner=ldm group=ldm mode=0644
+  with_items:
+    - metarPaths.txt
+    - ish.dat
+    - python/collectivebuster.ini
+    - python/headerfile.txt
+
+- name: install ldm init
+  copy: src=ldm.init dest=/etc/init.d/ldm mode=0755
+
+- name: enable & start ldm service
+  service: name=ldm enabled=yes state=started
+
+- name: cron cleanups
+  cron: minute={{ item.minute }} job="{{ item.job }}" user=root cron_file=ansible_ldm name="{{ item.name }}"
+  with_items:
+    - { 'name': 'cleanup log', 'minute': 42, 'job': '/bin/find /home/ldm/var/data/surface/work/log/ -name *.log -mmin +1440 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup err', 'minute': 42, 'job': '/bin/find /home/ldm/var/data/surface/work/log/ -name *.err -mmin +1440 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup upload-archive', 'minute': 22, 'job': '/bin/find /home/ldm/var/data/surface/work/upload-archive/ -mmin +1440 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup sendcc-completed', 'minute': 23, 'job': '/bin/find /home/ldm/var/data/surface/work/sendcc-completed/ -mmin +1440 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup metarchive', 'minute': 24, 'job': '/bin/find /home/ldm/var/data/surface/work/metarchive/ -mmin +20160 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup python-logs', 'minute': 25, 'job': '/bin/find /home/ldm/var/data/surface/work/python/logs/ -mmin +20160 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup xml', 'minute': 26, 'job': '/bin/find /home/ldm/var/data/surface/work/xml/ -mmin +20160 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup zone forecasts', 'minute': 27, 'job': '/bin/find /home/ldm/var/data/zone_forecasts/ -mmin +20160 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup madis', 'minute': 24, 'job': '/bin/find /home/ldm/var/data/madis/mesonet/netcdf/ -mmin +1440 -delete > /dev/null 2>&1' }
+    - { 'name': 'cleanup radar mosaic', 'minute': 3, 'job': '/bin/find /home/ldm/var/data/radar/mosaic/ -mtime +7 -delete > /dev/null 2>&1' }
+
+- name: more cron cleanups
+  cron: minute=5 hour=5 job='/bin/find /var/www/html/counts/results/??/????/ -mtime +7 -delete > /dev/null 2>&1' user=root cron_file=ansible_ldm name="cleanup old counts"
+
+- name: cron xml parser
+  cron: job='/home/ldm/var/data/surface/work/keepAlive.ksh >> /tmp/keepAlive.log 2>>/tmp/keepAlive.err' user=ldm cron_file=ansible_ldm name="xml parser"
+
+- name: sendcc metar.conf
+  template: src=metar.conf.j2 dest=/etc/vaisala-config/do-sendcc/metar-prod.conf
+
+- name: store_MADIS.sh script
+  template: src=process_MADIS.sh.j2 dest=~ldm/parsing.scripts/madis/process_MADIS.sh owner=ldm group=ldm mode=0755
+
+- name: madis.py
+  copy: src=madis/madis.py dest=~ldm/parsing.scripts/madis/madis.py owner=ldm group=ldm mode=0755
+
+- name: nrpe-ldm.cfg
+  copy: src=nrpe.cfg dest=/etc/nrpe.d/ldm.cfg
+  notify: reload nrpe
+
+- name: ldm_rsa
+  copy: src=ldm_rsa dest=~ldm/.ssh/id_rsa owner=ldm group=ldm mode=0600
+
+- include: radar.yml
+
+- include: wwa.yml
+
+- include: iptables.yml

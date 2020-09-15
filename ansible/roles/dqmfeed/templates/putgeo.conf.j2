@@ -1,0 +1,38 @@
+########################################################################
+# Configuration file for putGeo application                            #
+# **MUST** be located in the </etc/vaisals-config/do-putgeo> directory #
+# BJT March 2015                                                       #
+########################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = DEBUG
+LogToFile = yes
+LogFilePath = /home/data/putgeo/dqmdb/log
+
+ServerPort = 8803
+Password = v@1sAlA
+User = dqmuser
+{% for ip in hostvars[groups['dqmweb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+AuthURL = http://{{ ip }}:8080/dqmapp/services/dqmwebuser/auth?
+{% endfor %}
+
+# postgres stuff #####################f
+
+SetClientEncoding = yes
+ClientCharset = LATIN1
+
+# postgres or pg_bouncer port ########
+PostgresPort = 5432
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+PostgresServerAddr = {{ ip }}
+{% endfor %}
+# PostgresServerAddr = localhost
+PostgresDBName = qualmon2
+PostgresUser = postgres
+PostgresPassword = {{ postgres_password }}
+PostgresSchema = qm

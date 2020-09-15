@@ -1,0 +1,4 @@
+---
+extradomains: []
+letsencrypt: False
+letsencryptstaging: False

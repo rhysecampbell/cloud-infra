@@ -1,0 +1,49 @@
+[clouddb]
+dbn = postgres
+database = cloud
+host = db.vaicld.com
+port = 6545
+user = frontend
+password = {{ postgres_users.frontend['password'] }}
+
+[authdb]
+dbn = postgres
+database = auth
+host = db.vaicld.com
+port = 6545
+user = frontend
+password = {{ postgres_users.frontend['password'] }}
+
+[metardb]
+dbn = postgres
+database = metar
+host = db.vaicld.com
+port = 6545
+user = frontend
+password = {{ postgres_users.frontend['password'] }}
+
+[madisdb]
+dbn = postgres
+database = madis
+host = db.vaicld.com
+port = 6545
+user = frontend
+password = {{ postgres_users.frontend['password'] }}
+
+[lightningdb]
+dbn = postgres
+database = falls
+host = lightning.db.vaicld.com
+port = 5432
+user = {{ lightningdb.username }}
+password = {{ lightningdb.password }}
+
+[weatherzones]
+dbn = postgres
+database = weatherzones
+host = db.vaicld.com
+port = 6545
+user = frontend
+password = {{ postgres_users.frontend['password'] }}
+
+

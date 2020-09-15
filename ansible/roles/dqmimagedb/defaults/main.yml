@@ -1,0 +1,6 @@
+---
+postgres_password: CHANGE_ME
+postgres_users:
+  nagios:
+    password: "{{ vault_postgres_nagios_password | default('CHANGE_ME') }}"
+    roles: obsread

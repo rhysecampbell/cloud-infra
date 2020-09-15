@@ -1,0 +1,23 @@
+---
+- name: iptables {{ item.name }}
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'quality', port: 30000 }
+      - { name: 'cloud', port: 40000 }
+      - { name: 'metar', port: 50000 }
+      - { name: 'madis', port: 51000 }
+  tags: iptables
+
+- name: iptables {{ item.name }}
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'quality-haproxy', port: 30001 }
+      - { name: 'cloud-haproxy', port: 40001 }
+      - { name: 'metar-haproxy', port: 50001 }
+      - { name: 'madis-haproxy', port: 51001 }
+      - { name: 'httpd', port: 80 }
+  tags: iptables

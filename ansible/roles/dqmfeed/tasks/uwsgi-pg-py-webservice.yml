@@ -1,0 +1,23 @@
+---
+- name: Install pg-py-webservice
+  synchronize: src=pg-py-webservice dest=/var/www/python
+  notify: restart pg-py-webservice
+
+- name: Install pg-py-webservice init
+  copy: src=pg-py-webservice.init dest=/etc/init/pg-py-webservice.conf
+  notify: restart pg-py-webservice
+
+- name: Install pg-py-webservice init.d
+  copy: src=pg-py-webservice.init.d dest=/etc/init.d/pg-py-webservice mode=0755
+  notify: restart pg-py-webservice
+
+- name: Install pg-py-webservice/main.conf
+  template: src=pg-py-webservice.conf.j2 dest=/var/www/python/pg-py-webservice/main.conf
+  notify: restart pg-py-webservice
+
+- name: Install pg-py-webservice/logging.conf
+  template: src=pg-py-webservice-logging.conf.j2 dest=/var/www/python/pg-py-webservice/logging.conf
+  notify: restart pg-py-webservice
+
+- name: Copy pg-py-webservice swagger.yaml
+  copy: src=swagger-exportdb.yaml dest=/var/www/html/swagger-exportdb.yaml

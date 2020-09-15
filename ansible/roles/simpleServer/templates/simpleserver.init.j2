@@ -1,0 +1,21 @@
+# simpleServer upstart job
+
+description "{{ service_name }} simpleServer"
+start on runlevel [2345]
+stop on runlevel [06]
+
+respawn
+
+pre-start script
+sleep 1
+{% if service_name == "metar" %}
+    until nc -z localhost 80
+    do
+        echo "Waiting for port 80 to open"
+        sleep 1
+    done
+{% endif %}
+end script
+
+exec {{ daemon }} -c {{ service_name }}.conf
+

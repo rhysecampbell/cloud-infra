@@ -1,0 +1,24 @@
+---
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+
+- name: restart iptables
+  service: name=iptables state=restarted
+
+- name: restart log.io
+  service: name=log.io-server state=restarted
+  notify: restart log.io-harvester
+
+- name: restart log.io-server
+  service: name=log.io-server state=restarted
+
+- name: restart log.io-harvester
+  service: name=log.io-harvester state=restarted
+
+- name: merge haproxy config
+  assemble: "src=/etc/haproxy/conf.d/ dest=/etc/haproxy/haproxy.cfg delimiter='### START FRAGMENT ###'"
+  notify: restart haproxy
+
+- name: restart haproxy
+  service: name=haproxy state=restarted

@@ -1,0 +1,122 @@
+# {{ ansible_managed }}
+{% if 'frontends' in groups %}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-frontends
+        alias			Web Servers ({{ deployment_name }})
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-frontends
+	alias			Frontend Checks ({{ deployment_name }})
+	}
+
+{% for host in groups['frontends'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	hostgroups 		+{{ deployment_name }}-frontends
+}
+{% endfor %}
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     HTTP-80
+        check_command           check_http!-a demo:demovai -p 80 -u /images/ -j HEAD
+        display_name            HTTP-80
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     HTTP-8081
+        check_command           check_http!-a demo:demovai -p 8081 -u /images/ -j HEAD
+        display_name            HTTP-8081
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     HTTP-5000
+        check_command           check_http!-a demo:demovai -p 5000 -u /api/roles?uname=demo -N
+        display_name            HTTP-5000
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+	service_description	HTTP Recent Obs
+        check_command           check_http! -u /nagios-tests?db=cloud -s 'OK' -a test:test {% if letsencrypt %}-S{% endif %}
+
+        display_name            HTTP Recent Obs
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+	service_description	HTTP Recent Metar
+        check_command           check_http! -u /nagios-tests?db=metar -s 'OK' -a test:test {% if letsencrypt %}-S{% endif %}
+
+        display_name            HTTP Recent Metar
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+
+{% if upstream_ldm_madis is defined %}
+define service{
+	use			{{ deployment_name }}-service
+	service_description	HTTP Recent Madis
+        check_command           check_http! -u /nagios-tests?db=madis -s 'OK' -a test:test {% if letsencrypt %}-S{% endif %}
+
+        display_name            HTTP Recent Madis
+        servicegroups           {{ deployment_name }}-frontends
+	hostgroup_name		{{ deployment_name }}-frontends
+	normal_check_interval	1
+        }
+{% endif %}
+
+define service{
+        use                     {{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+        name                    {{ deployment_name }}-nrpe-frontend
+        register                0
+        servicegroups           {{ deployment_name }}-frontends
+        hostgroup_name          {{ deployment_name }}-frontends
+        }
+
+{% for ext in ['gif', 'png'] %}
+{% for country in ['us', 'uk'] %}
+define service{
+        use                     {{ deployment_name }}-nrpe-frontend
+        name                    {{ deployment_name }}-nrpe-latest_radar_{{ ext }}_{{ country }}
+        service_description     Latest {{ country }} .{{ ext }}
+        check_command           {{ deployment_name }}-check_nrpe!check_latest_radar_{{ ext }}_{{ country }}
+        display_name            Latest {{ country }} .{{ ext }}
+        }
+{% endfor %}
+{% endfor %}
+
+{% if letsencrypt %}
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     HTTPS Certificate
+        check_command           check_http! -C 30,14
+        display_name            HTTPS Certificate
+        hostgroup_name          {{ deployment_name }}-frontends
+        }
+{% endif %}
+{% endif %}

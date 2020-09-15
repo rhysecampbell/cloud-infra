@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Date: 14 Jul 09
+# Author: SER (from instructions in Patricia Miller email)
+#
+# The purpose of this script is to unzip the compressed MADIS files
+# and store them in a directory that is specified at execution time.
+#
+gzip -d > $1/$$.$2
+F=`echo $2 | cut -c1-13`
+FU=$F.$(uuidgen)
+mv $1/$$.$2 $1/$FU
+pkill -f madis.py.*$F
+if [ -s $1/${F}.latest ]
+then
+  latest=$(cat $1/${F}.latest)
+  ~ldm/parsing.scripts/madis/madis.py -b APRSWXNET -i $1/$FU -s http://{{ db_float }}:51001 --wr $1/${F}.latest -r $latest && mv $1/$FU $1/$F
+else
+  ~ldm/parsing.scripts/madis/madis.py -b APRSWXNET -i $1/$FU -s http://{{ db_float }}:51001 --wr $1/${F}.latest && mv $1/$FU $1/$F
+fi
+rm -rf $FU
+~ldm/parsing.scripts/madis/madis.py -b APRSWXNET -i $1/$F -m "host={{ db_float }} port=6545 dbname=madis user=postgres password={{ postgres_password }}"

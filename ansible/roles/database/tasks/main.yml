@@ -1,0 +1,36 @@
+---
+- name: remove nfs-utils #conflicts with pgbouncer/libevent..
+  yum: name=nfs-utils state=absent
+
+- name: install postgres
+  yum: name={{ item }} state=installed
+  with_items:
+      - postgresql93-server
+      - postgresql93-contrib
+      - repmgr93
+      - pgbouncer
+      - python-psycopg2
+      - xinetd
+      - postgis2_93
+      - pg_repack93
+  tags:
+      - pg_repack
+
+- include: pgbouncer.yml
+
+- name: tmpfilesys directory
+  file: path=/dev/shm/qualdb state=directory owner=postgres
+
+- name: authorized_keys
+  authorized_key: user=postgres key="{{ postgres_rsa }}" state=present
+
+- name: postgres_rsa
+  copy: src=postgres_rsa dest=~postgres/.ssh/id_rsa owner=postgres group=postgres mode=0600
+
+- include: repmgr.yml
+
+- include: xinetd.yml
+
+- include: iptables.yml
+
+- include: nrpe.yml

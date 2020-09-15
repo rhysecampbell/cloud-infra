@@ -1,0 +1,91 @@
+#!/bin/sh
+
+# chkconfig: 2345 55 25
+
+# Source function library.
+. /etc/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+SERVICE_NAME=dqmdatafeed
+DAEMON=/usr/local/bin/dqmdatafeed
+DAEMON_OPTS="-b -c feed.conf"
+PIDFILE="/var/run/dqmdatafeed.lock"
+
+checkenabled() {
+   # Check the service is enabled, if it isn't then lets just exit with a warning
+   # but pretending everything's fine so ansible doesn't cry.
+   if chkconfig --level 3 dqmdatafeed
+   then
+       return 0
+   else
+       echo "Service isn't enabled so not doing anything!"
+       exit 0
+   fi
+}
+
+start() {
+   # Check that networking is up.
+   [ "$NETWORKING" = "no" ] && exit 1
+   
+   echo "Starting $SERVICE_NAME"
+   if $DAEMON $DAEMON_OPTS
+   then
+       pgrep -f "$DAEMON $DAEMON_OPTS" > $PIDFILE
+   fi
+   return 0
+}
+   
+stop() {
+   echo -n "Shutting down $SERVICE_NAME: "
+   if pgrep -f "$DAEMON $DAEMON_OPTS"
+   then
+        pkill -f "$DAEMON $DAEMON_OPTS"
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && rm -f $PIDFILE
+   else
+        RETVAL=0
+   fi
+   return $RETVAL
+}
+
+# See how we were called.
+case "$1" in
+  start)
+   checkenabled
+   start
+        ;;
+  stop)
+   stop
+        ;;
+  status)
+   checkenabled
+   status -p $PIDFILE
+   RETVAL=$?
+   ;;
+  reload)
+   checkenabled
+   if status -p $PIDFILE
+   then
+    stop
+    start
+    RETVAL=$?
+   else
+    RETVAL=0
+   fi
+   ;;
+  restart)
+   checkenabled
+   stop
+   start
+   RETVAL=$?
+   ;;
+  *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        RETVAL=3
+esac
+
+exit $RETVAL
+

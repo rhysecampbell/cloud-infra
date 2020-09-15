@@ -1,0 +1,62 @@
+---
+- include: iptables.yml
+
+- name: install packages
+  yum: name={{ item }} state=installed
+  with_flattened:
+    - gcc
+    - python-devel
+    - python-jinja2
+    - python-pip
+    - python-requests
+
+- name: unarchive etcd
+  unarchive: src=etcd-v2.0.11-linux-amd64.tar.gz dest=/opt/
+
+- name: etcd directories
+  file: name={{ item }} state=directory
+  with_items:
+    - /var/lib/etcd
+
+- name: etcd init script
+  template: src=etcd.init.j2 dest=/etc/init/etcd.conf
+
+- name: Start etcd
+  shell: status etcd | grep start || (start etcd; echo started)
+  register: command_result
+  changed_when: "'started' in command_result.stdout"
+
+- name: sendcc template configuration
+  copy: src=template.conf.j2 dest=/etc/vaisala-config/do-sendcc/template.conf.j2
+
+- name: sendcc auto dir
+  file: dest=/etc/vaisala-config/do-sendcc/auto/ state=directory
+
+- name: sendcc log dir
+  file: dest=/var/log/sendcc state=directory
+
+# FIXME: better solution for this... delete old queues etc.?
+- name: Delete unprocessed files.
+  cron: cron_file=ansible_simpleserver
+        user=root
+        name="Delete unprocessed {{ item }} files."
+        job="find /var/local/{{ item }}/ -type f -mmin +60 -delete >/dev/null 2>&1"
+  with_items:
+    - rwis
+    - image
+
+- name: process_queues.py
+  copy: src=process_queues.py dest=/usr/local/bin/process_queues.py mode=0755
+
+- name: cron process_queues.py
+  cron: cron_file=ansible_simpleserver
+        user=root
+        name="Run process_queues.py"
+        job="/usr/local/bin/process_queues.py >/dev/null 2>&1"
+
+- name: check_queues.sh
+  copy: src=check_queues.sh dest=/usr/local/bin/check_queues.sh mode=0755
+
+- name: nrpe config
+  copy: src=nrpe.cfg dest=/etc/nrpe.d/duplicators.cfg
+  notify: reload nrpe

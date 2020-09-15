@@ -1,0 +1,139 @@
+################################################################################
+# configuration file for postgresql 'simpleServer' web service                 #
+# currently supporting:                                                        # 
+# imageDB                                                                      #          
+# trafficDB                                                                    #
+# qualityDB                                                                    #
+# cloudDB                                                                      #
+# this file MUST reside in the </etc/vaisala-config/do-simserver> directory    #
+# BJT May 2013                                                                 #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = INFO
+LogToFile = yes
+LogFilePath = /var/log/simpleserver/dqmimage
+
+# diag stuff #################################
+# ** PERFORMANCE HIT... ONLY ENABLE IF NEEDED **
+
+EnableDiagXML = false
+XMLDiagDir = /dev/shm
+
+
+ServerPort = 40001
+
+SendTimeout = 60
+ReceiveTimeout = 60
+AcceptTimeout = 0
+MaxKeepAlive = 100
+
+##########################
+# Use gzip compression of the 
+# response message if the calling
+# client supports it.
+
+CompressOutputMessage = no
+
+#################################
+
+# insert all values from a resultOf as a
+# single transaction. This will speed up
+# the insert process a great deal but
+# will rollback the complete set on error.
+
+BatchInsertMode = yes
+
+##########################
+
+# Setting InsertIntoDatabase to <no>
+# will prevent all database operations and also
+# stop image resizing / thumbnail creation
+
+InsertIntoDatabase = yes
+
+##########################
+# Strip out any ResultOf with Traffic Counting
+# codespaces and save the stripped file for
+# further processing.
+
+SaveStrippedFiles = no
+StrippedXMLOutputPath = /home/data/simpleserver/image/stripped
+
+##########################
+
+SaveXMLToFile = no 
+XMLOutputPath = /home/data/simpleserver/image/output
+
+# image schema type ############################
+
+dbSchema = dqmImage
+
+###############################################
+# image quality settings
+CreateImageStats = yes
+SetLowImageSize = 8000
+SetLowImageDetail = 0.3
+SetHighImageDetail = 200
+SetLowImageVariance = 100
+SetLowImageMean = 20
+SetHighImageMean = 200
+
+##############################################
+Base64Encode = yes
+
+SaveImagesToFile = no
+ImageOutputPath = /home/data/simpleserver/image/output/images
+ImageQuality = 60
+
+ReFormatImage = yes
+ImageVerticalSize = 480
+ImageHorizontalSize = 640
+
+CreateThumbnailImage = yes
+ThumbVerticalSize = 200
+ThumbHorizontalSize = 300
+
+CreateIconImage = yes
+IconVerticalSize = 80
+IconHorizontalSize = 120
+##############################################
+
+
+# postgres or pg_bouncer port
+PostgresPort = 5432
+# PostgresPort = 6543
+# PostgresServerAddr = 46.137.154.22
+
+{% for ip in hostvars[groups['dqmimagedb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+PostgresServerAddr = {{ ip }}
+{% endfor %}
+PostgresDBName = imagedb
+PostgresUser = postgres
+PostgresPassword = {{ postgres_password }}
+# PostgresPassword = postgres
+#PostgresPassword = va15a1a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

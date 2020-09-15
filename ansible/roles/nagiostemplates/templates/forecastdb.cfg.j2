@@ -1,0 +1,37 @@
+# {{ ansible_managed }}
+{% if 'forecastdb' in groups %}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-forecastdb
+        alias			Backends ({{ deployment_name }})
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-forecastdb
+	alias			Backends ({{ deployment_name }})
+	}
+
+{% for host in groups['forecastdb'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	hostgroups 		+{{ deployment_name }}-forecastdb,{{ deployment_name }}-databases
+}
+{% endfor %}
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     Recent Forecast
+        check_command           {{ deployment_name }}-check_nrpe!check_latest_forecast
+        servicegroups           {{ deployment_name }}-forecastdb
+        hostgroup_name          {{ deployment_name }}-forecastdb
+	check_interval		15
+        }
+
+{% endif %}

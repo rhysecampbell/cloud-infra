@@ -1,0 +1,258 @@
+heat_template_version: 2014-10-16
+
+description: Full 4-server DQM deployment including block storage.
+
+parameters:
+  key_name:
+    label: ssh key
+    type: string
+    description: Name of key-pair to be used for compute instance
+    default: jpc
+    constraints:
+      - custom_constraint: nova.keypair
+  domain:
+    label: domain
+    type: string
+    description: Domain to be placed under
+    default: vaicld-test.com
+    constraints:
+      - allowed_values: [ vaicld.com, vaicld-pre.com, vaicld-test.com ]
+        description: Value must be one of the registered domains.
+  network:
+    label: network
+    type: string
+    description: Network to connect to
+    default: DQM-test
+    constraints:
+      - custom_constraint: neutron.network
+  disktype:
+    label: disks
+    type: string
+    description: Disk type to use
+    default: SATA
+    constraints:
+      - custom_constraint: cinder.vtype
+
+resources:
+  db1_storage:
+    type: OS::Cinder::Volume
+    properties:
+      name:
+        str_replace:
+          template: db1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+      size: 150
+      volume_type: { get_param: disktype }
+  idb1_storage:
+    type: OS::Cinder::Volume
+    properties:
+      name:
+        str_replace:
+          template: idb1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+      size: 300
+      volume_type: { get_param: disktype }
+  db1:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: CentOS 6 (PVHVM)
+      flavor: 8 GB General Purpose v1
+      block_device_mapping:
+        - volume_id: { get_resource: db1_storage }
+          device_name: xvdb
+          delete_on_termination: true
+      networks:
+        - network: 00000000-0000-0000-0000-000000000000
+        - network: 11111111-1111-1111-1111-111111111111
+        - network: { get_param: network }
+      name: 
+        str_replace:
+          template: db1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+      user_data_update_policy: IGNORE
+      user_data: |
+        #!/bin/bash -v
+        set -e
+        test -b /dev/xvdb
+        echo -e "o\nn\np\n1\n\n\nw" | fdisk /dev/xvdb
+        mkfs.ext4 /dev/xvdb1
+        mkdir /mnt/data
+        echo "/dev/xvdb1        /mnt/data               ext4    defaults,noatime,barrier=0 1 1" >> /etc/fstab
+        mount -a
+        mkdir -p /mnt/data/postgres /var/lib/pgsql/9.3
+        ln -s /mnt/data/postgres /var/lib/pgsql/9.3/data
+  idb1:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: CentOS 6 (PVHVM)
+      flavor: 8 GB General Purpose v1
+      block_device_mapping:
+        - volume_id: { get_resource: idb1_storage }
+          device_name: xvdb
+          delete_on_termination: true
+      networks:
+        - network: 00000000-0000-0000-0000-000000000000
+        - network: 11111111-1111-1111-1111-111111111111
+        - network: { get_param: network }
+      name: 
+        str_replace:
+          template: idb1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+      user_data_update_policy: IGNORE
+      user_data: |
+        #!/bin/bash -v
+        set -e
+        test -b /dev/xvdb
+        echo -e "o\nn\np\n1\n\n\nw" | fdisk /dev/xvdb
+        mkfs.ext4 /dev/xvdb1
+        mkdir /mnt/data
+        echo "/dev/xvdb1        /mnt/data               ext4    defaults,noatime,barrier=0 1 1" >> /etc/fstab
+        mount -a
+        mkdir -p /mnt/data/postgres /var/lib/pgsql/9.3
+        ln -s /mnt/data/postgres /var/lib/pgsql/9.3/data
+  fdb1:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: CentOS 6 (PVHVM)
+      flavor: 8 GB General Purpose v1
+      networks:
+        - network: 00000000-0000-0000-0000-000000000000
+        - network: 11111111-1111-1111-1111-111111111111
+        - network: { get_param: network }
+      name: 
+        str_replace:
+          template: fdb1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+  www1:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: CentOS 6 (PVHVM)
+      flavor: 2 GB General Purpose v1
+      networks:
+        - network: 00000000-0000-0000-0000-000000000000
+        - network: 11111111-1111-1111-1111-111111111111
+        - network: { get_param: network }
+      name: 
+        str_replace:
+          template: www1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+  proc1:
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: CentOS 6 (PVHVM)
+      flavor: 2 GB General Purpose v1
+      networks:
+        - network: 00000000-0000-0000-0000-000000000000
+        - network: 11111111-1111-1111-1111-111111111111
+        - network: { get_param: network }
+        - network: duplicators
+      name: 
+        str_replace:
+          template: proc1.$deployment_name$.$domain$
+          params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+
+outputs:
+  inventory_file:
+    description: "Deploy 0 - Ansible inventory"
+    value:
+      str_replace:
+        template: |
+          [$deployment_name$]
+          db1.$deployment_name$.$domain$ ansible_host=$db1_ip$
+          idb1.$deployment_name$.$domain$ ansible_host=$idb1_ip$
+          fdb1.$deployment_name$.$domain$ ansible_host=$fdb1_ip$
+          proc1.$deployment_name$.$domain$ ansible_host=$proc1_ip$
+          www1.$deployment_name$.$domain$ ansible_host=$www1_ip$ extradomains='["$deployment_name$.$domain$","www.$deployment_name$.$domain$"]'
+          panopticon.$domain$ deployment_name=$deployment_name$
+          [$deployment_name$:vars]
+          domain=$deployment_name$.$domain$
+          [dqmdb]
+          db1.$deployment_name$.$domain$
+          [dqmimagedb]
+          idb1.$deployment_name$.$domain$
+          [dqmforecastdb]
+          fdb1.$deployment_name$.$domain$
+          [dqmprocessor]
+          proc1.$deployment_name$.$domain$
+          [dqmweb]
+          www1.$deployment_name$.$domain$
+          [monitoring]
+          [monitoring:children]
+          monitoringglobal
+          [monitoringglobal]
+          panopticon.$domain$
+          [monitoringglobal:vars]
+          domain=$domain$
+        params:
+            $deployment_name$: { get_param: 'OS::stack_name' }
+            $domain$: { get_param: domain }
+            $db1_ip$: { get_attr: [ db1, accessIPv4 ] }
+            $idb1_ip$: { get_attr: [ idb1, accessIPv4 ] }
+            $fdb1_ip$: { get_attr: [ fdb1, accessIPv4 ] }
+            $proc1_ip$: { get_attr: [ proc1, accessIPv4 ] }
+            $www1_ip$: { get_attr: [ www1, accessIPv4 ] }
+  bind_file:
+    description: BIND file
+    value:
+      str_replace:
+        template: |
+          $deployment_name$ 10800 IN CNAME www.$deployment_name$
+          www.$deployment_name$ 10800 IN CNAME www1.$deployment_name$
+          www1.$deployment_name$ 600 IN A $www1_ip$
+          db1.$deployment_name$ 600 IN A $db1_ip$
+          idb1.$deployment_name$ 600 IN A $idb1_ip$
+          fdb1.$deployment_name$ 600 IN A $fdb1_ip$
+          proc1.$deployment_name$ 600 IN A $proc1_ip$
+        params:
+          $deployment_name$: { get_param: 'OS::stack_name' }
+          $domain$: { get_param: domain }
+          $db1_ip$: { get_attr: [ db1, accessIPv4 ] }
+          $idb1_ip$: { get_attr: [ idb1, accessIPv4 ] }
+          $fdb1_ip$: { get_attr: [ fdb1, accessIPv4 ] }
+          $proc1_ip$: { get_attr: [ proc1, accessIPv4 ] }
+          $www1_ip$: { get_attr: [ www1, accessIPv4 ] }
+  ssh_check_command:
+    description: "Deploy 1: ssh check command"
+    value:
+      str_replace:
+        template: for i in $www1_ip$ $db1_ip$ $idb1_ip$ $fdb1_ip$ $proc1_ip$; do ssh root@$i exit; done
+        params:
+          $db1_ip$: { get_attr: [ db1, accessIPv4 ] }
+          $idb1_ip$: { get_attr: [ idb1, accessIPv4 ] }
+          $fdb1_ip$: { get_attr: [ fdb1, accessIPv4 ] }
+          $proc1_ip$: { get_attr: [ proc1, accessIPv4 ] }
+          $www1_ip$: { get_attr: [ www1, accessIPv4 ] }
+  initial_ansible_command:
+    description: "Deploy 2: Initial ansible command"
+    value:
+      str_replace:
+        template: ansible-playbook ansible/site.yml -i inventories/$deployment_name$ -u root -t ssh -l \!panopticon.$domain$
+        params:
+          $deployment_name$: { get_param: 'OS::stack_name' }
+          $domain$: { get_param: domain }
+  real_ansible_command:
+    description: "Deploy 3+: Continual ansible command"
+    value:
+      str_replace:
+        template: ansible-playbook ansible/site.yml -i inventories/$deployment_name$ -b
+        params:
+          $deployment_name$: { get_param: 'OS::stack_name' }

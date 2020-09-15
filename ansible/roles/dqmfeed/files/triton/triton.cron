@@ -1,0 +1,2 @@
+# Triton code
+6,16,26,36,46,56 * * * * /home/ldm/triton/scripts/triton-ftp2xml.pl 2>>/tmp/triton.err >>/tmp/triton.log

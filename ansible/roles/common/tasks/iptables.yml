@@ -1,0 +1,35 @@
+---
+- name: reload iptables
+  service: name=iptables state=reloaded
+  changed_when: False
+  register: iptables_reload
+  ignore_errors: yes
+
+- name: save config
+  command: service iptables save
+  when: iptables_reload|failed
+
+- name: Get iptables rules
+  shell: iptables -L
+  register: iptablesrules
+  always_run: yes
+  changed_when: False
+  tags:
+      - iptables
+      - always
+
+- name: iptables {{ item.name }}
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'nrpe', port: 5666 }
+  tags: iptables
+
+- name: iptables {{ item.name }}
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p udp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}-udp"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}-udp") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'ntpd', port: 123 }
+  tags: iptables

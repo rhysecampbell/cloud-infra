@@ -1,0 +1,309 @@
+---
+- name: schema directory
+  file: path=/opt/schemas owner=postgres state=directory
+
+- name: initdb
+  command: service postgresql-9.3 initdb
+  args:
+    creates: /var/lib/pgsql/9.3/data/base
+    warn: False
+
+- name: install postgresql configuration files
+  template: src={{ item }}.j2 dest=/var/lib/pgsql/9.3/data/{{ item }} owner=postgres group=postgres mode=600
+  notify: reload postgres
+  with_items:
+    - postgresql.conf
+    - pg_hba.conf
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started
+
+- name: set postgres password
+  command: psql -w -U postgres -d postgres -c "alter user postgres with password '{{ postgres_password }}';"
+  changed_when: False
+  become_user: postgres
+
+- name: create cloud user
+  postgresql_user: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+      - cloud
+
+- name: create roles
+  postgresql_user: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="NOLOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION"
+  with_items: "{{ postgres_roles }}"
+
+- name: create users
+  postgresql_user: name={{ item.key }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="LOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION" password={{ item.value.password }}
+  with_dict: "{{ postgres_users }}"
+
+- name: grant users roles
+  shell: psql -w -U postgres -d postgres -c "GRANT {{ item.value.roles }} TO {{ item.key }} ;;" && touch /opt/schemas/{{ item.key }}.{{ item.value.roles }}
+  with_dict: "{{ postgres_users }}"
+  args:
+      creates: /opt/schemas/{{ item.key }}.{{ item.value.roles }}
+  become_user: postgres
+
+- name: create tmpfilesys
+  shell: psql -w -U postgres -d postgres -c "CREATE TABLESPACE tmpfilesys OWNER cloud LOCATION '/dev/shm/qualdb';" && touch /dev/shm/qualdb/created
+  args:
+      creates: /dev/shm/qualdb/created
+  become_user: postgres
+
+- name: Check new weatherzones db installation status
+  stat: path=/opt/schemas/weatherzones-20160421
+  register: wz
+
+- name: Stop pgbouncer for weatherzones drop
+  service: name=pgbouncer state=stopped
+  when: not wz.stat.exists
+
+- name: Restart postgresql to ensure connections dropped.
+  service: name=postgresql-9.3 state=restarted
+  when: not wz.stat.exists
+
+- name: Drop old weatherzones db
+  postgresql_db: name=weatherzones state=absent login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  when: not wz.stat.exists
+
+- name: Start pgbouncer incase stopped earlier
+  service: name=pgbouncer state=started
+
+- name: Remove old schema status file
+  file: path={{ item }} state=absent
+  with_items:
+      - /opt/schemas/weatherzones.sql.used
+      - /opt/schemas/wwa_dynamic_wzwrite
+      - /opt/schemas/wwa_static_wzwrite
+      - /opt/schemas/wwa_nwsalerts
+      - /opt/schemas/wwa_nwsalerts_gid_seq
+      - /opt/schemas/wwa_dnwsalerts_gid_seq
+      - /opt/schemas/wwa_nwspubliczones
+      - /opt/schemas/wwa_statecounty
+      - /opt/schemas/wwa_select_static.nwspubliczones
+      - /opt/schemas/wwa_select_static.nwsfirezones
+      - /opt/schemas/wwa_select_static.usstates
+      - /opt/schemas/wwa_select_static.uscounties
+  when: not wz.stat.exists
+
+- name: Touch new weatherzones db installation status
+  file: path=/opt/schemas/weatherzones-20160421 state=touch
+  when: not wz.stat.exists
+
+- name: createdb
+  postgresql_db: name={{ item }} owner=cloud state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items: "{{ schemas }}"
+
+- name: copy schemas
+  copy: src=schemas/{{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items: "{{ schemas }}"
+
+- name: install schemas
+  shell: psql -w -U postgres -d {{ item }} -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.sql.used
+  args:
+      creates: /opt/schemas/{{ item }}.sql.used
+  with_items: "{{ schemas }}"
+  become_user: postgres
+
+- name: partition management script
+  copy: src=manage_partitions.sh dest=~postgres/manage_partitions.sh mode=0755 owner=postgres group=postgres
+
+- name: create clouddb partitions
+  command: ~postgres/manage_partitions.sh
+  args:
+      creates: /opt/schemas/first_partitions_created
+  become_user: postgres
+
+- name: Install postgis
+  shell: psql -w -U postgres -d {{ item }} -c "CREATE EXTENSION IF NOT EXISTS postgis;" && touch /opt/schemas/postgis_{{ item }}
+  with_items:
+      - metar
+  args:
+      creates: /opt/schemas/postgis_{{ item }}
+  become_user: postgres
+
+- name: oe.station_identity.location
+  shell: psql -w -U postgres -d metar -c "select geom from oe.station_identity limit 1" || psql -w -U postgres -d metar -c "alter table oe.station_identity add geom geometry; update oe.station_identity si set geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326);" && touch /opt/schemas/metar-oe.station_identity-geom
+  args:
+      creates: /opt/schemas/metar-oe.station_identity-geom
+  become_user: postgres
+
+- name: oe.user_roles.bounds
+  shell: psql -w -U postgres -d auth -c "select bounds from user_roles limit 1" || psql -w -U postgres -d auth -c "alter table user_roles add bounds float array[4];" && touch /opt/schemas/auth-user_roles-bounds
+  args:
+      creates: /opt/schemas/auth-user_roles-bounds
+  become_user: postgres
+
+- name: auth.user_roles.ticker
+  shell: psql -w -U postgres -d auth -c "select ticker from user_roles limit 1" || psql -w -U postgres -d auth -c "alter table user_roles add ticker boolean default false;" && touch /opt/schemas/auth-user_roles-ticker
+  args:
+      creates: /opt/schemas/auth-user_roles-ticker
+  become_user: postgres
+
+- name: auth.newer_tomcat_roles
+  shell: psql -w -U postgres -d auth -c "create or replace view newer_tomcat_roles AS SELECT u.username, r.role, r.role_description, u.comments, u.added_by, u.date_added, r.fcast_region_id, r.metar_data, r.ltg_data, r.graph_data, r.country_code, r.ticker, r.bounds FROM users u JOIN user_roles_ref f ON u.id = f.uid JOIN user_roles r ON r.id = f.rid; ALTER TABLE newer_tomcat_roles OWNER TO postgres; GRANT ALL ON TABLE newer_tomcat_roles TO postgres; GRANT SELECT ON TABLE newer_tomcat_roles TO obsread;" && touch /opt/schemas/auth-newer_tomcat_roles
+  args:
+      creates: /opt/schemas/auth-newer_tomcat_roles
+  become_user: postgres
+
+- name: convert image urls to filenames
+  shell: psql -w -U postgres -d cloud -c "UPDATE oe.station_identity SET image1_url=NULL WHERE image1_url ='http://www.vaicld.com/images/'; UPDATE oe.station_identity SET image1_url = regexp_replace(image1_url, '^http://www.vaicld.com/images/', ''); UPDATE oe.station_identity SET image2_url=NULL WHERE image2_url ='http://www.vaicld.com/images/'; UPDATE oe.station_identity SET image2_url = regexp_replace(image2_url, '^http://www.vaicld.com/images/', '');" && touch /opt/schemas/cloud-images_converted
+  args:
+      creates: /opt/schemas/cloud-images_converted
+  become_user: postgres
+
+- name: copy schema updates
+  copy: src={{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items:
+    - qm_surfstate-6
+    - set_m14_quality_thresholds-5
+    - set_ntcip_quality_thresholds-5
+
+- name: run schema updates
+  shell: psql -w -U postgres -d qualmon -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.done
+  with_items:
+    - qm_surfstate-6
+    - set_m14_quality_thresholds-5
+    - set_ntcip_quality_thresholds-5
+  args:
+      creates: /opt/schemas/{{ item }}.done
+  become_user: postgres
+
+- name: Insert new sensors
+  shell: psql -w -U postgres -d cloud -c "INSERT INTO oe.sensor_alias(symbol, sensor_no, alias, added_by, codespace)  SELECT '{{ item.symbol }}', {{ item.sensor_no }}, '{{ item.alias }}', 'Ansible', {{ item.codespace }} WHERE NOT EXISTS ( SELECT sensor_alias_id FROM oe.sensor_alias WHERE symbol = '{{ item.symbol }}' and sensor_no = '{{ item.sensor_no }}' and codespace = '{{ item.codespace }}');"
+  with_items:
+    - { symbol: 'essDewpointTemp.0', sensor_no: 0, alias: 'dewPoint', codespace: 8 }
+    - { symbol: 'essMaxWindGustDir.0', sensor_no: 0, alias: 'WindGustDir', codespace: 8 }
+    - { symbol: 'essMaxWindGustSpeed.0', sensor_no: 0, alias: 'WindGustSpd', codespace: 8 }
+    - { symbol: 'essPrecipSituation.0', sensor_no: 0, alias: 'essPrecipSituation', codespace: 8 }
+    - { symbol: 'essSurfaceFreezePoint.1', sensor_no: 1, alias: 'essSurfaceFreezePoint', codespace: 8 }
+    - { symbol: 'essSurfaceFreezePoint.2', sensor_no: 2, alias: 'essSurfaceFreezePoint', codespace: 8 }
+    - { symbol: '23', sensor_no: 1, alias: 'PrecipState', codespace: 0 }
+    - { symbol: '41', sensor_no: 1, alias: 'essSurfaceFreezePoint', codespace: 0 }
+    - { symbol: '56', sensor_no: 2, alias: 'essSurfaceFreezePoint', codespace: 0 }
+  register: command_result
+  changed_when: command_result.stdout.endswith('1')
+  become_user: postgres
+
+- name: Copy blank qualmon last_reading
+  command: cp -R /dev/shm/qualdb /var/local/
+  args:
+      creates: /var/local/qualdb
+
+- name: cron qualdb last_reading restoration on boot
+  cron: name="qualdb restoration"
+        cron_file=ansible-qualdbrestore
+        special_time=reboot
+        user=root
+        job="cp -R /var/local/qualdb /dev/shm && chown -R postgres:postgres /dev/shm/qualdb"
+
+- name: install setup_alarms.py
+  template: src=setup_alarms.py.j2 dest=/opt/setup_alarms.py owner=postgres group=postgres mode=0750
+  tags: notifications
+
+- name: install process_alarms.py
+  template: src=process_alarms.py.j2 dest=/opt/process_alarms.py owner=postgres group=postgres mode=0750
+  tags: notifications
+
+- name: cron setup_alarms.py
+  cron: cron_file=ansible_setup_alarms
+        user=root
+        name="Setup Alarms"
+        special_time=hourly
+        job="/opt/setup_alarms.py >/dev/null 2>&1"
+  tags: notifications
+
+- name: cron process_alarms.py
+  cron: cron_file=ansible_setup_alarms
+        user=root
+        name="Process Alarms"
+        job="/opt/process_alarms.py >/dev/null 2>&1"
+  when: onesignal.enabled
+  tags: notifications
+
+- name: cron set_quality_thresholds()
+  cron: cron_file=ansible_setup_alarms
+        user=postgres
+        name="set_quality_thresholds()"
+        special_time=hourly
+        job="psql -w -U postgres -d qualmon -c \"select * from set_quality_thresholds();\""
+
+- include: repmgr.yml
+
+- name: Create states poly directory
+  file: path=/opt/schemas/s_04jn14/ state=directory owner=postgres
+
+- name: Copy states poly
+  unarchive: src=s_04jn14.zip dest=/opt/schemas/s_04jn14/ creates=/opt/schemas/s_04jn14/s_04jn14.shp
+
+- name: Create states shape sql
+  shell: shp2pgsql -I -s 4326 s_04jn14 geo_states > geo_states.sql
+  args:
+    chdir: /opt/schemas/s_04jn14/ 
+    creates: /opt/schemas/s_04jn14/geo_states.sql
+
+- name: Process geo_states.sql
+  shell: psql -d madis -f /opt/schemas/s_04jn14/geo_states.sql && touch /opt/schemas/s_04jn14/geo_states.sql.done
+  args:
+    creates: /opt/schemas/s_04jn14/geo_states.sql.done
+  become_user: postgres
+
+- name: cron partition management
+  cron: name="manage partitions" user=postgres cron_file=ansible_manage-partitions job="~postgres/manage_partitions.sh >/dev/null 2>&1" special_time=daily
+
+- name: cron old alarm deletion
+  cron: name="delete old alarms"
+        user=postgres
+        cron_file=ansible_setup_alarms
+        special_time="weekly"
+        job="psql -d qualmon -w -c \"delete from alerts where processed_datetime < now() - interval '2 months';\""
+
+- name: schema backup directory
+  file: path=~postgres/backups owner=postgres state=directory
+
+- name: cron database backup
+  cron: name="{{ item }} database backup"
+        user=postgres
+        cron_file=ansible_postgres_backups
+        special_time="hourly"
+        job="pg_dump -E UTF8 --exclude-table-data='*.data_value_*' --exclude-table-data='*.sensor_identity' --exclude-table-data='*.*_reading' --exclude-table-data='geo_states' {{ item }} >~postgres/backups/{{ item }}.sql"
+  with_items: "{{ schemas }}"
+
+- name: cron schema backup
+  cron: name="{{ item }} schema backup"
+        user=postgres
+        cron_file=ansible_postgres_backups
+        special_time="hourly"
+        job="pg_dump -E UTF8 -s {{ item }} >~postgres/backups/{{ item }}-schema.sql"
+  with_items: "{{ schemas }}"
+
+- name: copy dqm fetch script
+  copy: src=dqm-fetch-rwis.py dest=/usr/local/bin/dqm-fetch-rwis.py mode=0755
+
+- name: cron dqm fetching
+  cron: name="fetch rwis"
+        cron_file=ansible_dqm
+        user=root
+        job="/usr/local/bin/dqm-fetch-rwis.py -H {{ upstream_dqm }}"
+  when: upstream_dqm is defined
+
+- name: disable cron dqm fetching
+  cron: name="fetch rwis"
+        cron_file=ansible_dqm
+        user=root
+        state=absent
+  when: upstream_dqm is not defined
+
+- name: grant nagios privs
+  postgresql_privs: >
+    login_host=localhost
+    login_password={{ postgres_password }}
+    database=qualmon
+    state=present
+    privs=SELECT
+    type=table
+    objs=alerts
+    roles=nagios
+    grant_option=no
+
+- include: wwa.yml
+  tags: wwa

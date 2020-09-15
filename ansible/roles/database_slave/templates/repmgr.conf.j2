@@ -1,0 +1,67 @@
+###################################################
+# Replication Manager configuration file
+###################################################
+
+# Cluster name
+cluster=vaicld
+
+# Node ID
+node=2
+node_name={{ ansible_hostname }}
+
+# Connection information
+{% for ip in ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+#conninfo='host=localhost'
+conninfo='host={{ ip }} user=repmgr dbname=repmgr'
+{% endif %}
+{% endfor %}
+rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
+ssh_options=-o "StrictHostKeyChecking no"
+
+# How many seconds we wait for master response before declaring master failure
+master_response_timeout=60
+
+# How many time we try to reconnect to master before starting failover procedure
+reconnect_attempts=6
+reconnect_interval=10
+
+# Autofailover options
+failover=manual
+priority=-1
+promote_command='/usr/pgsql-9.3/bin/repmgr standby promote -f /etc/repmgr/9.3/repmgr.conf'
+follow_command='/usr/pgsql-9.3/bin/repmgr standby follow -f /etc/repmgr/9.3/repmgr.conf'
+
+# Log level: possible values are DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG
+# Default: NOTICE
+loglevel=NOTICE
+
+# Logging facility: possible values are STDERR or - for Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+# Default: STDERR
+logfacility=STDERR
+
+# path to pg_ctl executable
+pg_bindir=/usr/pgsql-9.3/bin/
+
+#
+# you may add command line arguments for pg_ctl
+#
+# pg_ctl_options='-s'
+
+#
+# redirect stderr to a logfile
+#
+logfile='/var/log/repmgr/repmgr-9.3.log'
+
+#
+# change monitoring interval; default is 2s
+#
+# monitor_interval_secs=2
+
+#
+# change wait time for master; before we bail out and exit when the
+# master disappears, we wait 6 * retry_promote_interval_secs seconds;
+# by default this would be half an hour (since sleep_delay default
+# value is 300)
+#
+# retry_promote_interval_secs=300

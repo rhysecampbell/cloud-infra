@@ -1,0 +1,60 @@
+---
+deployment_name: vagrant
+domain: vagrant.test
+subnet: 172.23.33
+db_float: 172.23.33.100
+db_master: 172.23.33.21
+# log_server: 172.23.33.200
+# upstream_ldm: 172.23.33.51 - uncomment this when getting data from dqm
+# duplicator: 172.23.33.8 - uncomment this when getting data from the duplicator
+# discovery_url:  - get a url from https://discovery.etcd.io/new
+upstream_ldm:
+    - 192.168.10.7
+#upstream_ldm_madis:
+#    - x.x.x.x
+
+ebs_service_url: http://192.101.77.46:26078
+
+adminui_password: CHANGE_ME
+
+postgres_password: CHANGE_ME
+
+postgres_roles:
+    - authwrite
+    - cloudwrite
+    - metarwrite
+    - madiswrite
+    - obsread
+    - pgsqlchkgrp
+    - qualwrite
+    - wzwrite
+
+postgres_users:
+    cloudserver:     { 'roles': 'cloudwrite', 'password': 'CHANGE_ME'}
+    frontend:        { 'roles': 'obsread', 'password': 'CHANGE_ME'}
+    metarserver:     { 'roles': 'metarwrite', 'password': 'CHANGE_ME'}
+    madisserver:     { 'roles': 'madiswrite', 'password': 'CHANGE_ME'}
+    nagios:          { 'roles': 'obsread', 'password': 'CHANGE_ME'}
+    pgsqlchkusr:     { 'roles': 'pgsqlchkgrp', 'password': 'CHANGE_ME'}
+    qualserver:      { 'roles': 'qualwrite', 'password': 'CHANGE_ME'}
+    rolesmanagement: { 'roles': 'authwrite', 'password': 'CHANGE_ME'}
+    polywrite:       { 'roles': 'wzwrite', 'password': 'CHANGE_ME'}
+
+haproxy_password: CHANGE_ME
+
+lightningdb:
+    host: 172.23.33.100
+    username: CHANGE_ME
+    password: CHANGE_ME
+
+reboot_after_yum: False
+
+#avicast_password: CHANGE_ME
+
+#tomcat_password: CHANGE_ME
+
+letsencrypt: False
+
+danger_allowdatabasedrops_danger: True
+
+#logview_password: CHANGE_ME

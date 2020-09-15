@@ -1,0 +1,24 @@
+---
+- name: create nagios config dir
+  file: path=/etc/nagios/ansible-managed-{{ deployment_name }} state=directory
+
+- name: include nagios config dir
+  lineinfile: dest=/etc/nagios/nagios.cfg
+              line="cfg_dir=/etc/nagios/ansible-managed-{{ deployment_name }}" 
+              regexp="^cfg_dir=/etc/nagios/ansible-managed-{{ deployment_name }}$"
+              insertbefore="# OBJECT CACHE FILE"
+              state=present
+
+- name: create the nagios object files
+  template: src={{ item + ".cfg.j2" }}
+            dest=/etc/nagios/ansible-managed-{{ deployment_name }}/{{ item }}.cfg
+  with_items:
+    - common
+    - backend
+    - frontend
+    - database
+    - ldm
+    - dqm
+    - forecastdb
+  notify: restart nagios
+  tags: dqmweb-wars

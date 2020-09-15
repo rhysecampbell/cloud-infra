@@ -1,0 +1,22 @@
+frontend 80-http
+    bind *:80
+    http-request del-header Proxy
+{% if letsencrypt %}
+    redirect scheme https code 301 if !{ ssl_fc } !{ path_beg /.well-known/ }
+    bind *:443 ssl no-sslv3 no-tls-tickets crt /var/lib/acme/haproxy/{{ ansible_nodename }} {% if extradomains is defined %}{% for domain in extradomains %} crt /var/lib/acme/haproxy/{{ domain }} {% endfor %}{% endif %}
+{% endif %}
+
+    option forwardfor
+    option http-server-close
+    use_backend letsencrypt if { path_beg -i /.well-known/acme-challenge/ }
+    default_backend tomcat
+
+backend tomcat
+    acl internal src {{ subnet }}.0/16 127.0.0.1
+    acl vaisalaoffice src 63.233.206.1 23.253.164.115 192.101.77.246 173.14.3.101 73.78.223.159 62.232.44.163
+    acl path_dqmapp path_beg /dqmapp
+    http-request allow if path_dqmapp internal 
+    http-request allow if path_dqmapp vaisalaoffice
+    http-request block if path_dqmapp
+    redirect location /dqmweb if { path -i / }
+    server localhost:8080 localhost:8080 check

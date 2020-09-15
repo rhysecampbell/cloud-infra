@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+import psycopg2
+import csv
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+conn = psycopg2.connect("dbname=qualmon2 host=localhost user=postgres password={{ postgres_password }}")
+cur = conn.cursor()
+
+
+def add_region(regionname):
+    logging.debug("Checking for region %s" % regionname)
+    with conn.cursor() as curr:
+        curr.execute("""SELECT v_region_id
+                          FROM qm.station_alias_identity
+                          WHERE v_region_name = %s""",
+                     (regionname,))
+        try:
+            v_region_id = curr.fetchone()[0]
+            logging.debug("Region %s is %s" % (regionname, v_region_id))
+        except TypeError:
+            logging.info("Inserting region %s" % regionname)
+            curr.execute("""INSERT INTO qm.station_alias_identity (v_region_name,
+                                                                   display_name,
+                                                                   fault_detection_minutes,
+                                                                   sensor_fault_detection_minutes,
+                                                                   polling_interval_minutes
+                                                                   )
+                            VALUES(%s, %s, 120, 60, 10)""",
+                         (regionname, regionname))
+            conn.commit()
+            v_region_id = add_region(regionname)
+    return v_region_id
+
+
+def add_association(v_region_id, stn_id):
+    logging.debug("Checking for %s %s association" % (associatedcustomer, stn_id))
+    with conn.cursor() as curr:
+        curr.execute("""SELECT stn_alias_id
+                          FROM qm.station_alias
+                         WHERE stn_id=%s
+                           AND v_region_id=%s""",
+                     (stn_id, v_region_id))
+        try:
+            curr.fetchone()[0]
+        except TypeError:
+            logging.info("Associating %s with %s" % (stn_id, v_region_id))
+            curr.execute("""INSERT INTO qm.station_alias (v_region_id, stn_id)
+                            VALUES(%s, %s)""",
+                         (v_region_id, stn_id))
+            conn.commit()
+
+
+def add_station(xml_target_name, owning_region_id=None):
+    logging.debug("Checking for station %s" % xml_target_name)
+    with conn.cursor() as curr:
+        curr.execute("""SELECT stn_id, owning_region_id
+                          FROM qm.station_identity
+                          WHERE xml_target_name = %s""",
+                     (xml_target_name,))
+        try:
+            stn_id, existing_owner = curr.fetchone()
+            logging.debug("Station %s is %s owned by %s" % (xml_target_name, stn_id, existing_owner))
+        except TypeError:
+            logging.info("Inserting station %s" % xml_target_name)
+            curr.execute("""INSERT INTO qm.station_identity (xml_target_name,
+                                                             station_name,
+                                                             owning_region_id,
+                                                             polling_interval_minutes
+                                                             )
+                            VALUES(%s, %s, %s, 10)""",
+                         (xml_target_name, xml_target_name, owning_region_id))
+            conn.commit()
+            existing_owner = owning_region_id
+            stn_id = add_station(xml_target_name)
+        if owning_region_id != existing_owner:
+            logging.debug("%s owned by %s, not %s. Updating" % (stn_id, existing_owner, owning_region_id))
+            curr.execute("""UPDATE qm.station_identity
+                               SET owning_region_id=%s
+                             WHERE stn_id=%s""",
+                         (owning_region_id, stn_id))
+            conn.commit()
+    return stn_id
+
+
+with open('triton_customers.csv', 'rb') as csvfile:
+    customerreader = csv.reader(csvfile, dialect=csv.excel)
+    for row in customerreader:
+        try:
+            tritonid = 'T%05d' % int(row[0])
+        except TypeError:
+            continue
+        logging.info(tritonid)
+        owningcustomer = row[1]
+        stationtype = row[2]
+        associatedcustomer = row[3]
+        v_region_id = add_region(owningcustomer)
+        stn_id = add_station(tritonid, v_region_id)
+        add_association(v_region_id, stn_id)
+        v_region_id = add_region("Triton")
+        add_association(v_region_id, stn_id)
+        if associatedcustomer == "NextEra":
+            v_region_id = add_region("TRITON - %s" % associatedcustomer)
+            add_association(v_region_id, stn_id)

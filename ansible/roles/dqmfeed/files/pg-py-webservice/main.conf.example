@@ -1,0 +1,11 @@
+[database]
+dbn = postgres
+db = pgice
+host = 192.168.40.259
+user = example-username
+password = example=password
+
+[main]
+debug = False
+debug_sql = False
+dbprinting = False

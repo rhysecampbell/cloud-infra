@@ -1,0 +1,9 @@
+---
+- name: Database Server
+  hosts: dqmdb
+  tasks:
+    - name: Dump postgres data.
+      command: pg_dump --attribute-inserts -a qualmon2 -t qm.station_identity -t qm.station_alias -t qm.station_alias_identity -t qm.sensor_master -t qm.sensor_alias -t qm.sensor_group -t qm.sensor_master_identity -t qm.sensor_range_check -t qm.sensor_step_check -t qm.sensor_cross_check -t qm.error_codes -t exportws.* -t qmfault.fault_action -t qmfault.fault_type -t qmfault_resp -f /tmp/qualmon2-backup.sql
+      become_user: postgres
+    - name: Fetch postgres data.
+      fetch: src=/tmp/qualmon2-backup.sql dest=/tmp/ flat=yes validate_checksum=no

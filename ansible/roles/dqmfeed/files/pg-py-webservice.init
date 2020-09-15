@@ -1,0 +1,7 @@
+# simple uWSGI script
+
+description "uwsgi pg-py-webservice instance"
+start on runlevel [2345]
+stop on runlevel [06]
+
+exec uwsgi --http :5002 --wsgi-file /var/www/python/pg-py-webservice/server.py --master --processes 1 --threads 2 --die-on-term --stats 127.0.0.1:9192 --logto /var/log/pg-py-webservice.log

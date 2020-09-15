@@ -1,0 +1,339 @@
+[% INCLUDE header.html %]
+<script id="source" language="javascript" type="text/javascript">
+$(document).ready(function() {
+	window.configInt = {};
+	window.configInt.cache = {
+		inputForm:$("#inputForm"),
+		roleTable:$("#roleTable"),
+
+		addRole:$('#addRole'),
+			addRoleInfo:$('#addRoleInfo'),
+		addedBy:$('#addedBy'),
+			addedByInfo:$('#addedByInfo'),
+		addCountryCode:$('#addCountryCode'),
+			addCountryCodeInfo:$('#addCountryCodeInfo'),
+		addDescription:$('#addDescription'),
+			addDescriptionInfo:$('#addDescriptionInfo'),
+		addmetarData:$('#addmetarData'),
+		addltgData:$('#addltgData'),
+		addgraphData:$('#addgraphData'),
+		addtickerData:$('#addtickerData'),
+		addSubmit:$('#addSubmit'),
+			addMessage:$('#addMessage'),
+
+		roles:$('.roles'),
+		modifyRole:$('#modifyRole'),
+			modifyRoleInfo:$('#modifyRoleInfo'),
+				modifyMessage:$('#modifyMessage'),
+				newNameInfo:$('#newNameInfo'),
+		modifyRoleData:$('#modifyRoleData'),
+		metarData:$('#metarData'),
+		ltgData:$('#ltgData'),
+		graphData:$('#graphData'),
+		tickerData:$('#tickerData'),
+		countryCode:$('.countryCode'),
+		modifyCountryCode:$('#modifyCountryCode'),
+			modifyCountryCodeInfo:$('#modifyCountryCodeInfo'),
+		modifyRoleName:$('#roleName'),
+			modifyRoleNameInfo:$('#modifyRoleNameInfo'),
+		modifyDescription:$('#modifyDescription'),
+			modifyDescriptionInfo:$('#modifyDescriptionInfo'),
+		modifyRoleSubmit:$('#modifyRoleSubmit'),
+			renameMessage:$('#renameMessage'),
+
+		
+		deleteRole:$('#deleteRole'),
+			deleteRoleInfo:$('#deleteRoleInfo'),
+		deleteSubmit:$('#deleteSubmit'),
+			deleteMessage:$('#deleteMessage'),
+	};
+	window.configInt.settings = {	
+		baseURL:'/rest/v1.0',
+	};
+
+	configInt.cache.addSubmit.click(function() {
+		if(	   inputValidation('addRole','typeLength',['lower',3,20])
+			&& inputValidation('addCountryCode','length',[2,5])
+			&& inputValidation('addedBy','length',[3,7])
+			&& inputValidation('addDescription','length',[4,40])
+		) {
+			roleAdd();
+		}
+	});
+
+	configInt.cache.modifyRoleSubmit.click(function() {
+		if(    inputValidation('modifyRole','notBlank')
+			&& inputValidation('modifyCountryCode','length',[2,5])
+			&& inputValidation('modifyRoleName','length',[3,40])
+			&& inputValidation('modifyDescription','length',[4,40])
+		) {
+			setRole();
+		}
+	});
+
+	configInt.cache.deleteSubmit.click(function() {
+		if(inputValidation('deleteRole','notBlank')) {
+			roleDelete();
+		}
+	});
+
+	drawPage(); // fill in the select boxes and tables
+});
+
+function drawPage() {
+	resetPage();
+
+	setCombobox(configInt.cache.deleteRole,'roleListSimple');
+	setCombobox(configInt.cache.countryCode,'/data/country_codes.json');
+
+	//createRegionRenameMap();
+	modifySelectRoles();
+
+	pagerTable('roleList');
+	return;
+}
+function resetPage() {
+	configInt.cache.inputForm.trigger("reset");
+}
+</script>
+
+
+<div id="mainPage">
+	<noscript>
+		<div class="commonErrorMessages">
+			<p>You must enable JavaScript to use this application.</p>
+		</div>
+	</noscript>
+
+<form id="inputForm" onsubmit="return false">
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Add Virtual Region</h1>
+		</div>
+		<div id="release-version">
+			<div id="release-version-text">Version</div>
+			<div id="release-version-number">[% version %]</div>
+		</div>
+		<div class="plotBody">
+			This will create an Auth database entry for users to be mapped to a Virtual Region.<br />
+			This will also create a new entry that sites can be mapped to in the Cloud/METAR database.<br /><br />
+			<table>
+			<tr valign="top">
+				<td>Virtual Region:</td>
+				<td><input id="addRole" type="text" name="role" /> &nbsp;&nbsp;&nbsp;&nbsp;</td>
+				<td>
+				METAR Data: <input id="addmetarData" type="checkbox" />&nbsp;&nbsp;
+				Lightning Data: <input  id="addltgData" type="checkbox" />&nbsp;&nbsp;
+				Graph Data: <input  id="addgraphData" type="checkbox" />&nbsp;&nbsp;
+				Weather Outlook Ticker: <input  id="addtickerData" type="checkbox" />
+				</td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addRoleInfo"></div></td>
+					<td></td>
+				</tr>
+			<tr>
+				<td>Added By:</td>
+				<td><input id="addedBy" type="text" name="addedBy" /></td>
+				<td></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addedByInfo"></div></td>
+					<td></td>
+				</tr>
+			<tr>
+				<td>Country Code:</td>
+				<td colspan="2"><select id="addCountryCode" class="countryCode"></select></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td colspan="2"><div id="addCountryCodeInfo"></div></td>
+				</tr>
+			<tr>
+				<td>Display Name:</td>
+				<td colspan="2"><input id="addDescription" type="text" name="description" size="40" /></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addDescriptionInfo"></div></td>
+					<td></td>
+				</tr>
+			<tr>
+				<td><input id="addSubmit" type="submit" value="Submit" /></td>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td colspan="3">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="3"><div id="addMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Modify Virtual Region</h1>
+		</div>
+		<div class="plotBody">
+			To modify the virtual region settings. This will effect all users in the given region.<br /><br />
+			<table>
+			<tr>
+				<td>Virtual Region:</td>
+				<td>
+					<select id="modifyRole" class="roles"></select>
+
+
+
+					<div id="modifyRoleData" style="display: none;"></div>
+					<div id="modifyRoleInfo"></div>
+
+				</td>
+			<tr>
+			<tr>
+				<td colspan="2">&nbsp;</td>
+			</tr>
+			</tr>
+				<td></td>
+				<td>
+				METAR Data: <input id="metarData" type="checkbox" />&nbsp;&nbsp;
+				Lightning Data: <input  id="ltgData" type="checkbox" />&nbsp;&nbsp;
+				Graph Data: <input  id="graphData" type="checkbox" />&nbsp;&nbsp;
+				Weather Outlook Ticker: <input  id="tickerData" type="checkbox" />
+				</td>
+			</tr>
+			<tr>
+				<td>Country Code:</td>
+				<td><select id="modifyCountryCode" class="countryCode"></select></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="modifyCountryCodeInfo"></div></td>
+				</tr>
+			<tr>
+				<td>Region Name:</td>
+				<td><input id="roleName" type="text" name="role" size="40" /></td>
+			</tr>
+			<tr>
+				<tr>
+					<td></td>
+					<td><div id="roleNameInfo"></div></td>
+				</tr>
+			</tr>
+			<tr>
+				<td>Display Name:</td>
+				<td><input id="modifyDescription" type="text" name="description" size="40" /></td>
+			</tr>
+			<tr>
+				<tr>
+					<td></td>
+					<td><div id="modifyDescriptionInfo"></div></td>
+				</tr>
+			</tr>
+			<tr>
+				<td colspan="2"><input id="modifyRoleSubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="2"><div id="modifyMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Delete Virtual Region</h1>
+		</div>
+		<div class="plotBody">
+			<table>
+			<tr>
+				<td><select id="deleteRole"></select></td>
+			</tr>
+			<tr>
+				<td><input id="deleteSubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td><div id="deleteRoleInfo"></div></td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+			<tr>
+				<td><div id="deleteMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+		</div>
+	</div>
+</form>
+</div>
+<br />
+<div id="resultsTable">
+	<table class="tablesorter">
+		<thead>
+			<tr>
+				<td class="pager sorter-false" colspan="10">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+			<tr>
+				<td class="pager" colspan="10">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+		</tfoot>
+		<tbody>
+		</tbody>
+	</table>
+</div>
+[% INCLUDE footer.html %]

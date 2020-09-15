@@ -1,0 +1,68 @@
+---
+- name: metftp1 user
+  user: name=metftp1
+
+- name: ldm user
+  user: name=ldm
+
+- name: metftp1 authorized_keys
+  authorized_key: user=metftp1 key="ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAIEAuOh8yAviJUtpeQqhUezNNfQHZgNVyHLBlrtj862K3q93ZdPYyWKwIo+K/MH3v9ZhqJ0H5pLivSmlu31rmngBW0Hho/0uBrY9EF92TqBRAMdj3veKTteQbXhyw6D21/ERKYgvzPy3N7aKY5PHxMjOmmvKweKGa8EoXlp9h1EO7dU= root@metftp1.dsbir.vaisala.com"
+
+- include: httpd.yml
+
+- include: uwsgi.yml
+
+- name: Install haproxy config
+  template: src=haproxy.cfg.j2 dest=/etc/haproxy/conf.d/frontend.cfg
+  notify: merge haproxy config
+  tags: letsencrypt
+
+- name: cleanup old rsync temporary files
+  cron: cron_file=ansible_cleanup
+        user="root"
+        name="cleanup old rsync temporary files ({{ item }})"
+        job="find /var/www/html/{{ item }}/ -type f -mtime +7 -delete >/dev/null 2>&1" 
+  with_items:
+    - images
+    - forecasts
+
+- name: cron subscription request
+  cron: name="images duplicator subscription"
+        cron_file=ansible_duplicator_subscription
+        user=root
+        job="curl -L http://duplicator:4001/v2/keys/queues/image/{{ item }} -XPUT -d value=50000 -d ttl=600 >/dev/null 2>&1"
+  when: duplicator is defined and item | match("{{ subnet }}.*")
+  with_items: "{{ ansible_all_ipv4_addresses }}"
+
+- name: disable cron subscription request
+  cron: name="images duplicator subscription"
+        cron_file=ansible_duplicator_subscription
+        user=root
+        state=absent
+  when: duplicator is not defined
+
+- name: copy dqm fetch script
+  copy: src=dqm-fetch-images.py dest=/usr/local/bin/dqm-fetch-images.py mode=0755
+
+- name: cron dqm fetching
+  cron: name="fetch images"
+        cron_file=ansible_dqm
+        user=root
+        job="/usr/local/bin/dqm-fetch-images.py -H {{ upstream_dqm }} -o /var/www/html/images/"
+  when: upstream_dqm is defined
+
+- name: disable cron dqm fetching
+  cron: name="fetch images"
+        cron_file=ansible_dqm
+        user=root
+        state=absent
+  when: upstream_dqm is not defined
+
+- include: iptables.yml
+
+- name: authorized_keys
+  authorized_key: user=ldm key="{{ ldm_rsa }}" state=present
+
+- include: nrpe.yml
+- include: radar.yml
+  tags: radar

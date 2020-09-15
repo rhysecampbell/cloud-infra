@@ -1,0 +1,30 @@
+[dqm-prod]
+proc1.dqm.vaicld.com ansible_ssh_host=23.253.53.252
+www1.dqm.vaicld.com ansible_ssh_host=23.253.21.217 extradomains='["dqm.vaicld.com",]'
+db1.dqm.vaicld.com ansible_ssh_host=104.130.118.79
+idb1.dqm.vaicld.com ansible_ssh_host=104.130.212.147
+fdb1.dqm.vaicld.com ansible_ssh_host=23.253.63.244
+panopticon.vaicld.com
+
+[dqmdb]
+db1.dqm.vaicld.com
+
+[dqmimagedb]
+idb1.dqm.vaicld.com
+
+[dqmweb]
+www1.dqm.vaicld.com
+
+[dqmforecastdb]
+fdb1.dqm.vaicld.com
+
+[dqmprocessor]
+proc1.dqm.vaicld.com
+
+[monitoring]
+
+[monitoring:children]
+monitoringglobal
+
+[monitoringglobal]
+panopticon.vaicld.com

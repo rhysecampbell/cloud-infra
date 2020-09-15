@@ -1,0 +1,69 @@
+---
+- name: Yum Packages.
+  yum: name={{ item }} state=installed
+  with_items:
+    - ksh
+    - wget
+    - perl-DBI
+    - perl-DBD-Pg
+
+- name: gribuser
+  user: name=gribuser generate_ssh_key=yes
+
+- name: Required directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /home/data
+    - /usr/local/share/perl5/Temperature
+
+- name: gribuser owned Required directories
+  file: path={{ item }} state=directory owner=gribuser
+  with_items:
+    - /home/data/grib2obs
+    - /home/data/grib2obs/GRIB
+    - /home/data/grib2obs/GRIB/bin
+    - /home/data/grib2obs/GRIB/processing-log
+    - /home/data/grib2obs/GRIB/sendcc-log
+    - /home/data/grib2obs/GRIB/build-running
+    - /home/data/grib2obs/GRIB/ready4sendcc
+
+- name: Copy scripts
+  copy: src=grib/{{ item }} dest=/home/data/grib2obs/GRIB/{{ item }} owner=gribuser group=gribuser mode=0755
+  with_items:
+    - buildMSO.ksh
+
+- name: Copy scripts
+  template: src=grib/{{ item }}.j2 dest=/home/data/grib2obs/GRIB/{{ item }} owner=gribuser group=gribuser mode=0755
+  with_items:
+    - buildMSO.pl
+
+- name: Copy files
+  copy: src=grib/{{ item }} dest=/home/data/grib2obs/GRIB/{{ item }} owner=gribuser group=gribuser
+  with_items:
+    - FTC-sites.txt
+
+- name: Copy Windchill.pm
+  copy: src=grib/Windchill.pm dest=/usr/local/share/perl5/Temperature/Windchill.pm mode=0755
+
+- name: Copy binaries
+  copy: src=grib/{{ item }} dest=/home/data/grib2obs/GRIB/bin/{{ item }} owner=gribuser group=gribuser mode=0755
+  with_items:
+    - wgrib2
+
+- name: sendcc symlink
+  file:
+    src: /usr/local/bin/sendcc
+    dest: /home/data/grib2obs/GRIB/bin/sendcc
+    state: link
+
+- name: sendcc configuration
+  copy: src=grib/sendcc.conf dest=/etc/vaisala-config/do-sendcc/grib.conf
+
+- name: Cron buildMSO.ksh
+  cron: name="Process GRIB data" cron_file=ansible_grib job="/home/data/grib2obs/GRIB/buildMSO.ksh >>/home/data/grib2obs/GRIB/processing-log/`date +\%Y.\%m.\%d.\%H.\%M`.results.log 2>>/home/data/grib2obs/GRIB/processing-log/`date +\%Y.\%m.\%d.\%H.\%M`.errors.log" minute=7 hour="4,10,16,22" user="gribuser"
+
+- name: Cleanup logs
+  cron: name="/home/data/grib2obs/GRIB/processing-log/" cron_file=ansible_grib job="find /home/data/grib2obs/GRIB/processing-log/ -mtime +14 -delete" special_time=daily user="gribuser"
+
+- name: Cleanup directories
+  cron: name="/home/data/grib2obs/GRIB/ old directories" cron_file=ansible_grib job="find /home/data/grib2obs/GRIB/*.xml/ /home/data/grib2obs/GRIB/*.mso/ -type f -mtime +14 -delete && find /home/data/grib2obs/GRIB -type d -mtime +15 \( -name *.xml -o -name *.mso \) -delete" special_time=daily user="gribuser"

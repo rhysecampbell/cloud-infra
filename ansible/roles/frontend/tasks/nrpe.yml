@@ -1,0 +1,6 @@
+---
+- name: frontend nrpe commands
+  copy: src=nrpe-{{ item }}.cfg dest=/etc/nrpe.d/{{ item }}.cfg
+  notify: reload nrpe
+  with_items:
+    - frontend

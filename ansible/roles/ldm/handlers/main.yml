@@ -1,0 +1,13 @@
+---
+- name: restart ldm
+  service: name=ldm state=restarted
+
+- name: reload nrpe
+  service: name=nrpe state=reloaded
+
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+               
+- name: restart iptables
+  service: name=iptables state=restarted

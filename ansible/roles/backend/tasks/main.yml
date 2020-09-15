@@ -1,0 +1,35 @@
+---
+- name: Install keepalived
+  yum: name=keepalived state=installed
+
+- name: Install keepalived config
+  template: src=keepalived.conf.j2 dest=/etc/keepalived/keepalived.conf
+  notify: restart keepalived
+
+- name: Start keepalived
+  service: name=keepalived enabled=yes state=started
+
+- name: Install haproxy config
+  template: src=haproxy.cfg.j2 dest=/etc/haproxy/conf.d/backend.cfg
+  notify: merge haproxy config
+
+- name: ss_quality output directory
+  file: path=/home/data/sendcc/quality/output state=directory
+
+- name: cron subscription request
+  cron: name="rwis duplicator subscription"
+        cron_file=ansible_duplicator_subscription
+        user=root
+        job="curl -L http://duplicator:4001/v2/keys/queues/rwis/{{ db_float }} -XPUT -d value=30001 -d ttl=600 >/dev/null 2>&1"
+  when: duplicator is defined
+
+- name: disable cron subscription request
+  cron: name="rwis duplicator subscription"
+        cron_file=ansible_duplicator_subscription
+        state=absent
+  when: duplicator is not defined
+
+- include: sendcc.yml
+- include: adminui.yml
+- include: iptables.yml
+- include: nrpe.yml

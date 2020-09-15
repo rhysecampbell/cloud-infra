@@ -1,0 +1,31 @@
+---
+- name: remove extra tests folder
+  file: path=/usr/lib64/nagios/plugins/jpc-tests state=absent
+
+- name: Install nagios tests
+  copy: src=nagios-tests/ dest=/usr/lib64/nagios/plugins/ mode=755
+
+- name: nrpe.cfg
+  copy: src=nrpe.cfg dest=/etc/nagios/nrpe.cfg
+  notify: restart nrpe
+
+- name: common nrpe commands
+  copy: src=nrpe-common.cfg dest=/etc/nrpe.d/common.cfg
+  notify: reload nrpe
+
+- name: enable nrpe
+  service: name=nrpe state=started enabled=yes
+
+- name: sudoers.d/check_yum
+  file:
+    path: /etc/sudoers.d/check_yum
+    state: absent
+
+- name: sudoers.d/nrpe
+  copy:
+    src: sudoers.d-nrpe
+    dest: /etc/sudoers.d/nrpe
+    owner: root
+    group: root
+    mode: 0440
+    validate: 'visudo -cf %s'

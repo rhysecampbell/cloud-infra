@@ -1,0 +1,49 @@
+---
+- name: install httpd & perl packages
+  yum: name={{ item }} state=present
+  with_items:
+      - httpd
+      - perl-CGI-Simple
+      - perl-CGI
+      - perl-DateTime
+      - perl-JSON
+      - perl-Template-Toolkit
+      - perl-Log-Log4perl
+      - perl-DBD-Pg
+      - python-passlib
+
+- name: httpd ServerName
+  lineinfile: dest=/etc/httpd/conf/httpd.conf regexp="^ServerName " insertafter="^#ServerName " line="ServerName localhost"
+
+- name: httpd listen 8080
+  lineinfile: dest=/etc/httpd/conf/httpd.conf regexp="^Listen " insertafter="^#Listen " line="Listen 8080"
+
+- name: copy adminui files
+  copy: src=ipadconfigurator dest=/var/www/
+
+- name: adminui perms
+  file: path=/var/www/ipadconfigurator owner=apache group=apache recurse=yes
+
+- name: log directory
+  file: path=/var/log/ipadconfigurator state=directory owner=apache group=apache
+
+- name: log file #FIXME: logrotate
+  copy: dest=/var/log/ipadconfigurator/configurator.{{ item }}.pl.log force=no content=no owner=apache group=apache
+  with_items:
+      - frontend
+      - backend
+
+- name: environment.cfg
+  template: src=adminui.cfg.j2 dest=/var/www/ipadconfigurator/web/config/environment.cfg
+
+- name: ipadconfigurator.conf
+  copy: src=ipadconfigurator.conf dest=/etc/httpd/conf.d/ipadconfigurator.conf
+  notify: reload httpd
+
+- name: passwd file
+  htpasswd: path=/etc/httpd/adminui-passwd create=yes name=cloud password={{ adminui_password }}
+  notify: reload httpd
+
+- name: start & enable httpd
+  service: name=httpd enabled=yes state=started
+

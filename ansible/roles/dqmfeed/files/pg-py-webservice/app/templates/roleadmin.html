@@ -1,0 +1,26 @@
+$def with (list, roleform,)
+In this table, each number represents access to data from the organisation with that id in the database. Click the link for the Sensor Monitoring org.
+<table border="1">
+<tr><td><b>Username:</b></td>
+    <td><b>Region:</b></td>
+    <td><b>Role:</b></td>
+</tr>
+$for row in list
+  <tr>
+    <td><a href="./roles?username=$row['username']">$row['username']</a></td>
+    $if row['region']:
+	    $if row['region'].isdigit():
+	      <td><a href="http://tmior2k.dsbir.vaisala.com:8080/sensormonitor_primary/4.0/xsql/organization.xsql?organization_id=$row['region']">$row['region']</a></td>
+	    $else:
+	      <td>$row['region']</td>
+    <td>$row['role']</td>
+  <tr>
+</table>
+<a href="./roles">Show all users</a>
+
+<h2>Add or delete Permissions:</h2>
+<form name="main" method="post">
+$if not roleform.valid: <p class="error">Try again, AmeriCAN:</p> 
+$:roleform.render()
+<input type="submit" />
+</form>

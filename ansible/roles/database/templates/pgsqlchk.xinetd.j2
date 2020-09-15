@@ -1,0 +1,16 @@
+# default: on
+# description: pqsqlchk
+service pgsqlchk
+{
+        flags           = REUSE
+        socket_type     = stream
+        port            = 45432
+        wait            = no
+        user            = nobody
+        server          = /usr/local/bin/pgsqlchk
+	log_on_success	=
+        log_on_failure  += USERID
+        disable         = no
+        only_from       = {{ subnet }}.0/16
+        per_source      = UNLIMITED
+}

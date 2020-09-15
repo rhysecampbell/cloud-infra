@@ -1,0 +1,44 @@
+#!/bin/bash
+
+PGSQL_HOST="localhost"
+PGSQL_PORT="6543"
+PGSQL_DATABASE="repmgr"
+PGSQL_USERNAME="pgsqlchkusr"
+export PGPASSWORD="{{ postgres_users.pgsqlchkusr.password }}"
+ 
+if [[ $1 == "read" ]]
+then
+  command="show port;"
+  success="Postgres is available."
+  failure="Postgres is not available."
+
+  psql -h $PGSQL_HOST -p $PGSQL_PORT -U $PGSQL_USERNAME \
+          $PGSQL_DATABASE -c "$command" >/dev/null 2>&1
+else
+    command="select pg_is_in_recovery();"
+  success="Postgres is writable."
+  failure="Postgres is not available."
+
+  psql -h $PGSQL_HOST -p $PGSQL_PORT -U $PGSQL_USERNAME \
+          $PGSQL_DATABASE -c "$command" | grep f >/dev/null 2>&1
+
+fi
+
+returncode=$?
+
+if [ $returncode -eq 0 ]
+then
+	# Postgres is fine, return http 200
+	/bin/echo -e "HTTP/1.1 200 OK\r\n"
+	/bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+	/bin/echo -e "\r\n"
+	/bin/echo -e "$success\r\n"
+	/bin/echo -e "\r\n"
+else
+	# Postgres is down, return http 503
+	/bin/echo -e "HTTP/1.1 503 Service Unavailable\r\n"
+	/bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+	/bin/echo -e "\r\n"
+	/bin/echo -e "$failure\r\n"
+	/bin/echo -e "\r\n"
+fi

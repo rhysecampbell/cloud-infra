@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+
+<meta http-equiv="refresh" content="362">
+
+<link rel="stylesheet" href="css/style.css" type="text/css" />
+<link rel="stylesheet" href="css/gxt-all.css" type="text/css" />
+<link rel="Stylesheet" href="css/cloudDB.css" type="text/css" />
+
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+
+
+<title>Current Watches and Warnings</title>
+</head>
+<body>
+
+<div id="banner">
+<a class="link-vaisala-logo" href="http://www.vaisala.com/" title="Visit Vaisala" tabindex="1" accesskey="h">Vaisala</a>
+<p><font size=-1><b>/ Current Watches / Warnings</b></font></p>
+<br>
+</div>
+
+<br>
+
+<div class="geojsonlist"></div>
+<font size=4>
+<script>
+var params = {};
+
+if (location.search) {
+    var parts = location.search.substring(1).split('&');
+
+    for (var i = 0; i < parts.length; i++) {
+        var nv = parts[i].split('=');
+        if (!nv[0]) continue;
+        params[nv[0]] = nv[1] || true;
+    }
+}
+
+if ((! params.state) && (! params.lat || ! params.lon) && (! params.left || ! params.right || ! params.top || ! params.bottom)) {
+    params['left'] = '-180';
+    params['right'] = '180';
+    params['top'] = '90';
+    params['bottom'] = '-90';
+}
+params['singlepoint'] = 'true';
+
+newquery = [];
+for (var param in params) {
+    newquery.push(encodeURIComponent(param) + "=" + encodeURIComponent(params[param]));
+}
+
+var alertsurl = '/api/v1/wwa/alerts?' + newquery.join("&");
+
+$.getJSON(alertsurl, function(i) {
+    $.each(i, function(index) {
+        var geojson = i[index];
+        var lon = geojson.coordinates[0];
+        var lat = geojson.coordinates[1];
+        var ugcstring = geojson.ugcstring
+        var queryparameters = "lat=" + lat + "&lon=" + lon
+        $( ".geojsonlist" ).append("<a href=\"/api/v1/wwa/alerts?" + queryparameters + "\" target=\"" + ugcstring + "\">JSON</a> -  <a href=\"map.html?" + queryparameters + "\" target=\"" + ugcstring + "\">" + ugcstring + "</a><br>");
+    });
+});
+</script>
+</font>
+</body>
+</html>

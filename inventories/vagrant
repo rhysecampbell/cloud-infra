@@ -1,0 +1,69 @@
+############
+## Cloud: ##
+############
+[vagrant]
+www1.vagrant ansible_ssh_host=172.23.33.11 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/www1.vagrant/virtualbox/private_key
+#www2.vagrant ansible_ssh_host=172.23.33.12 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/www2.vagrant/virtualbox/private_key
+db1.vagrant ansible_ssh_host=172.23.33.21 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/db1.vagrant/virtualbox/private_key
+#db2.vagrant ansible_ssh_host=172.23.33.22 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/db2.vagrant/virtualbox/private_key
+#ldm.vagrant ansible_ssh_host=172.23.33.31 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/ldm.vagrant/virtualbox/private_key
+#fcast.vagrant ansible_ssh_host=172.23.33.32 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/fcast.vagrant/virtualbox/private_key
+
+[frontends]
+www1.vagrant
+#www2.vagrant
+
+[backends]
+db1.vagrant
+#db2.vagrant
+
+[corecluster_master]
+db1.vagrant
+
+[corecluster_slave]
+#db2.vagrant
+
+[corecluster:children]
+corecluster_master
+corecluster_slave
+
+#[ldm]
+#ldm.vagrant
+
+#[forecastdb]
+#fcast.vagrant
+
+##########
+## DQM: ##
+##########
+[vagrant]
+#db1.dqm.vagrant ansible_ssh_host=172.23.33.51 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/db1.dqm.vagrant/virtualbox/private_key
+#idb1.dqm.vagrant ansible_ssh_host=172.23.33.52 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/idb1.dqm.vagrant/virtualbox/private_key
+#proc1.dqm.vagrant ansible_ssh_host=172.23.33.53 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/proc1.dqm.vagrant/virtualbox/private_key
+#www1.dqm.vagrant ansible_ssh_host=172.23.33.54 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/www1.dqm.vagrant/virtualbox/private_key
+
+#[dqmdb]
+#db1.dqm.vagrant
+
+#[dqmimagedb]
+#idb1.dqm.vagrant
+
+#[dqmweb]
+#www1.dqm.vagrant
+
+#[dqmprocessor]
+#proc1.dqm.vagrant
+
+#################
+## Monitoring: ##
+#################
+[vagrant]
+#nagios.vagrant ansible_ssh_host=172.23.33.71 ansible_ssh_user=vagrant ansible_ssh_private_key_file=.vagrant/machines/nagios.vagrant/virtualbox/private_key
+
+[monitoring]
+#nagios.vagrant
+
+[monitoring:children]
+monitoringglobal
+
+[monitoringglobal]

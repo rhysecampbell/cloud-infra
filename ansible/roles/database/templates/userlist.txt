@@ -1,0 +1,4 @@
+"postgres" "{{ postgres_password }}"
+{% for user, credentials in postgres_users.iteritems() %}
+"{{ user }}" "{{ credentials.password }}"
+{% endfor %}

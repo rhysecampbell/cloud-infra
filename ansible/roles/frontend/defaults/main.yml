@@ -1,0 +1,3 @@
+---
+letsencrypt: False
+ldm_rsa: "{{ lookup('file', 'ldm_rsa.pub') }}"

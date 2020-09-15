@@ -1,0 +1,39 @@
+#
+# JDBC properties for databases
+#
+#
+driver.oracle=oracle.jdbc.OracleDriver
+driver.postgres=org.postgresql.Driver
+
+########################
+# cloud UID/PWD
+db.cloud.uid=postgres
+db.cloud.pwd={{ postgres_password }}
+
+#########################
+# qualmon UID/PWD
+db.qualmon.uid=postgres
+db.qualmon.pwd={{ postgres_password }}
+
+########################
+# processor UID/PWD
+db.proc.uid=postgres
+db.proc.pwd={{ postgres_password }}
+
+########################
+# imagedb UID/PWD
+db.image.uid=postgres
+db.image.pwd={{ postgres_password }}
+
+{% if 'dqmdb' in groups %}
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+db.cloud.url=jdbc:postgresql://{{ ip }}:5432/qualmon2
+db.qualmon.url=jdbc:postgresql://{{ ip }}:5432/qualmon2
+db.proc.url=jdbc:postgresql://{{ ip }}:5432/qualmon2
+{% endfor %}
+{% endif %}
+{% if 'dqmimagedb' in groups %}
+{% for ip in hostvars[groups['dqmimagedb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+db.image.url=jdbc:postgresql://{{ ip }}:5432/imagedb
+{% endfor %}
+{% endif %}

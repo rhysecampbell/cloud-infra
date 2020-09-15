@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+
+import psycopg2
+
+from sys import exit
+
+dbstring = "host=localhost dbname=qualmon user=nagios password={{ postgres_users.nagios['password'] }}"
+
+with psycopg2.connect(dbstring) as conn:
+    with conn.cursor() as cur:
+        cur.execute("select count(*) as count from alerts where processed_datetime is NULL and entry_datetime > (now() - interval '20 minutes') and entry_datetime < (now() - interval '2 minutes');")
+        count = cur.fetchone()[0]
+
+if count > 0: 
+    print "CRITICAL: %s alerts not processed in last 20 minutes."
+    exit(1)
+else:
+    print "OK - All alerts in last 20 minutes processed."
+    exit(0)
+

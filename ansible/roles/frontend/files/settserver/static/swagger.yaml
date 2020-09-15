@@ -1,0 +1,818 @@
+swagger: '2.0'
+info:
+  title: Vaisala Cloud Service API
+  description: |
+    Powers the ipad and more!
+
+    Check out the following links for more information:
+      * https://confluence.vaisala.com/confluence/display/RWISiPad
+      * https://confluence.vaisala.com/confluence/display/SETT
+  version: "2.2.5"
+# the domain of the service
+#host: www.vaicld-test.com
+# array of all schemes that your API supports
+#schemes:
+#  - http
+# will be prefixed to all paths
+basePath: /api/v1.1
+produces:
+  - application/json
+tags:
+  - name: ipad
+    description: Interfaces used by the iPad RoadCondition app.
+    externalDocs:
+      description: Find out more
+      url: https://confluence.vaisala.com/confluence/display/RWISiPad
+  - name: Alerts
+    description: Watches & Warnings, including geojson boundings.
+    externalDocs:
+      description: Find out more
+      url: https://confluence.vaisala.com/confluence/pages/viewpage.action?pageId=14558021
+  - name: madis
+    description: Everybody's favourite.
+paths:
+  /rwis/latest/{regionId}:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data.
+        
+        The latest data by observed time is reported for all stations within
+        the specified region.
+        
+        A subset of parameters are produced, suitable for the iPad. These are
+        controlled by the contents of the cloud schema's oe.sensor_alias table.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: regionId
+          in: path
+          description: region_id
+          required: true
+          type: string
+      tags:
+        - ipad
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/rwisObservation'
+  /rwis/graph:
+    get:
+      summary: RWIS observation data suitable for ipad graphs
+      security:
+        - basicAuth: []
+      tags:
+        - ipad
+      parameters:
+        - name: stnid
+          in: query
+          description: vmdb_id
+          required: true
+          type: integer
+      responses:
+        200:
+          description: A station observation graph object.
+          schema:
+            type: object
+            $ref: '#/definitions/rwisObservationGraph'
+  /fcast/graph:
+    get:
+      summary: forecast data suitable for ipad graphs
+      tags:
+        - ipad
+      parameters:
+        - name: lat
+          in: query
+          description: Latitude point
+          required: true
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: lon
+          in: query
+          description: Longitude point
+          required: true
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      responses:
+        200:
+          description: An array of forecasts
+          schema:
+            type: object
+            $ref: '#/definitions/forecastGraph'
+  /metar/latest/{regionId}:
+    get:
+      summary: METAR data for ipad region.
+      description: |
+        This produces Metar observation data.
+        
+        Se also `/metar/latest` to request based on bounding box.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: regionId
+          in: path
+          description: region_id
+          required: true
+          type: string
+      tags:
+        - ipad
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/metarObservation'
+  /metar/latest:
+    get:
+      summary: METAR Data
+      description: |
+        This produces Metar observation data based on a bounding box.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: left
+          in: query
+          description: Left longitude bound.
+          required: true
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: right
+          in: query
+          description: Right longitude bound.
+          required: true
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: top
+          in: query
+          description: Upper latitude bound.
+          required: true
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: bottom
+          in: query
+          description: Lower latitude bound.
+          required: true
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+      tags:
+        - ipad
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/metarObservation'
+  /madis/latest:
+    get:
+      summary: MADIS Data
+      parameters:
+        - name: left
+          in: query
+          description: Left longitude bound.
+          required: false
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: right
+          in: query
+          description: Right longitude bound.
+          required: false
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: top
+          in: query
+          description: Upper latitude bound.
+          required: false
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: bottom
+          in: query
+          description: Lower latitude bound.
+          required: false
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: state
+          in: query
+          description: "2 letter state code"
+          required: false
+          type: string
+      tags:
+        - madis
+      responses:
+        200:
+          description: An array of madis station observations
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/madisObservation'
+  /madis/vao:
+    get:
+      summary: MADIS Data in vao format
+      responses:
+        200:
+          description: A VAO format file of madis observations.
+      tags:
+        - madis
+  /radar/list/{countryCode}:
+    get:
+      summary: Radar metadata
+      description: |
+        This should be used to obtain metadata about available radar imagery.
+        
+        It also provides the location to fetch that imagery.
+
+        Join the radar_url with an image_sequence element to fetch individual tiles.
+        radar_url + 'loop.gif' gives an animation.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: countryCode
+          in: path
+          description: "2 digit country code"
+          required: true
+          type: string
+      tags:
+        - ipad
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/radarList'
+  /roles:
+    get:
+      summary: Metadata on allowed roles for logged in user.
+      description: |
+        Should be the first call made producing a list of roles and other useful
+        metadata for interacting with the service.
+      security:
+        - basicAuth: []
+      parameters:
+        - name: uname
+          in: query
+          description: basic auth username
+          required: true
+          type: string
+      tags:
+        - ipad
+      responses:
+        200:
+          description: List of allowed roles & metadata
+          schema:
+            type: object
+            $ref: '#/definitions/roleList'
+  /lightning/point:
+    get:
+      summary: Get lightning metadata
+      security:
+        - basicAuth: []
+      parameters:
+        - name: lat
+          in: query
+          description: Latitude point
+          required: true
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: lon
+          in: query
+          description: Longitude point
+          required: true
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: miles
+          in: query
+          description: 'if set to "5" return strikes within 5, else 7 & 20'
+          required: false
+          type: number
+      tags:
+        - ipad
+      responses:
+        200:
+          description: strike metadata for location specified
+          schema:
+            type: object
+            $ref: '#/definitions/lightningPointMetaData'
+  /wwa/alerts:
+    get:
+      summary: Alert Polygon
+      description: |
+        This produces a list of alerts with polygons for the specified location.
+        
+        A limiting location should be specified using one of the available query
+        mechanisms:
+          * Bounding Box: `left`, `right`, `top`, `bottom`
+          * Point: `lat`, `lon`
+          * State: `state`
+          * County: `state`, `county`
+          * Alert Category: `alertCat`
+        
+        If any parameter of a mechanism is specified, all other parameters must
+        also be provided. e.g. `lat` makes no sense without `lon`. The only
+        exception is County, as `state` is a valid parameter on it's own.
+        
+        Multiple mechanisms are treated as a logical AND. i.e. if both `left`,
+        `right`, `top`, `bottom` & `state` are specified then only alerts within
+        an intersection of the bounding box and state will be produced.
+      security:
+       - basicAuth: []
+      parameters:
+        - name: left
+          in: query
+          description: <font color=green>Full decimal value for Left longitude bound</font>
+          required: false
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: right
+          in: query
+          description: <font color=green>Full decimal value for Right longitude bound</font>
+          required: false
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: top
+          in: query
+          description: <font color=green>Full decimal value for Upper latitude bound</font>
+          required: false
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: bottom
+          in: query
+          description: <font color=green>Full decimal value for Lower latitude bound</font>
+          required: false
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: lat
+          in: query
+          description: <font color=blue>Single point query Latitude point</font>
+          required: false
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        - name: lon
+          in: query
+          description: <font color=blue>Single point query Longitude point</font>
+          required: false
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+        - name: state
+          in: query
+          description: <font color=red>2 letter Upper Case State code<font>
+          required: false
+          type: string
+        - name: county
+          in: query
+          description: <font color=red>Optional full county name, each name section upper case, when State Code is provided</font>
+          required: false
+          type: string
+        - name: alertCat
+          in: query
+          description: <font color=brown>Optional 3 character Alert Category code</font>
+          required: false
+          type: string
+          collectionFormat: multi
+        - name: singlepoint
+          in: query
+          description: "Set to return only a single point. (Makes larger queries quicker)"
+          required: false
+          type: boolean
+          default: False
+        - name: simplify
+          in: query
+          description: "tolerance argument to ST_SimplifyPreserveTopology. See http://postgis.net/docs/ST_SimplifyPreserveTopology.html<p><b>** Be careful, too large a simplify argument may return an empty polygon. **</b>"
+          required: false
+          type: number
+          format: double
+      tags:
+        - Alerts
+      responses:
+        200:
+          description: An array of alerts
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/alertPoly'
+definitions:
+  rwisObservation:
+    properties:
+      stations:
+        type: array
+        description: List of station observations
+        items:
+          type: object
+          properties:
+            name:
+              description: pretty station name
+              type: string
+              example: "D4 - Rogerson"
+            lon:
+              description: longitude
+              type: number
+              example: -116.951802
+            lat:
+              description: latitude
+              type: number
+              example: 42.517126
+            id:
+              description: vmdb_id
+              type: integer
+              example: 1234
+            image1_url:
+              description: webcam image url
+              type: string
+              example: "http://www1.vaicld-test.com/images/02B7A3C4_06BA7ADC_cam1.jpg"
+            forecast_url:
+              description: wunderground forecast url
+              type: string
+              example: "http://api.wunderground.com/api/eecf914a4e5e5e57/forecast/q/ID/shoshone.json"
+            time:
+              description: time of last observation
+              type: string
+              example: "2015-08-13 09:00:08.0"
+            observations:
+              type: array
+              description: individual sensor observations
+              items:
+                type: object
+                description: individual sensor observation
+                properties:
+                  status:
+                    description: quality code
+                    type: integer
+                    example: -210
+                  type:
+                    description: sensor name
+                    type: string
+                    example: "spectroSurfaceTemperature"
+                  value:
+                    description: observed value
+                    type: number
+                    example: 24.2
+                  no:
+                    description: sensor number
+                    type: integer
+                    example: 0
+  rwisObservationGraph:
+    properties:
+      Name:
+        description: pretty station name
+        type: string
+        example: "D4 - Rogerson"
+      lon:
+        description: longitude
+        type: number
+        example: -116.951802
+      lat:
+        description: latitude
+        type: number
+        example: 42.517126
+      id:
+        description: vmdb_id
+        type: integer
+        example: 1234
+      results:
+        type: array
+        description: individual sensor observations
+        items:
+          type: object
+          description: individual sensor observation
+          properties:
+            symbol:
+              description: sensor name
+              type: string
+              example: "essAirTemperature.1"
+            value:
+              description: observed value
+              type: number
+              example: 24.2
+            time:
+              description: time of observation
+              type: string
+              example: "2015-08-13 09:00:08.0"
+  forecastGraph:
+    properties:
+      Name:
+        description: pretty station name
+        type: string
+        example: "Rogerson"
+      id:
+        description: vmdb_id
+        type: integer
+        example: 1234
+      results:
+        type: array
+        description: individual sensor forecasts
+        items:
+          type: object
+          description: individual sensor forecast
+          properties:
+            symbol:
+              description: sensor name
+              type: string
+              example: "FAT"
+            value:
+              description: observed value
+              type: number
+              example: 24.2
+            time:
+              description: time of forecast
+              type: string
+              example: "2015-08-13 09:00:08.0"
+  metarObservation:
+    properties:
+      stations:
+        type: array
+        description: List of station observations
+        items:
+          type: object
+          properties:
+            name:
+              description: pretty station name
+              type: string
+              example: "Caldwell Industrial Airport"
+            lon:
+              description: longitude
+              type: number
+              example: -116.951802
+            lat:
+              description: latitude
+              type: number
+              example: 42.517126
+            altitude:
+              description: "altitude in m/ft???"
+              type: number
+              example: 711
+            id:
+              description: database id
+              type: integer
+              example: 1234
+            icao:
+              description: icao 4 letter code
+              type: string
+              example: K65R
+            forecast_url:
+              description: wunderground forecast url
+              type: string
+              example: "http://api.wunderground.com/api/eecf914a4e5e5e57/forecast/q/43.65,-116.633.json"
+            time:
+              description: time of last observation
+              type: string
+              example: "2015-08-13 09:00:08.0"
+            observations:
+              type: array
+              description: list of sensor observations
+              items:
+                type: object
+                description: individual sensor observation
+                properties:
+                  value:
+                    description: observed numeric value
+                    type: number
+                    example: 24.2
+                  text:
+                    description: original text of observation
+                    type: string
+                    example: "METAR KEUL 130835Z AUTO 00000KT 10SM CLR 19/07 A2999 RMK AO1"
+                  type:
+                    description: sensor name
+                    type: string
+                    example: "M_windSpeed"
+                  description:
+                    description: text value
+                    type: string
+                    example: "No cloud below 12,000 ft"
+  madisObservation:
+    properties:
+      stations:
+        type: array
+        description: List of station observations
+        items:
+          type: object
+          properties:
+            name:
+              description: pretty station name
+              type: string
+              example: "D4 - Rogerson"
+            lon:
+              description: longitude
+              type: number
+              example: -116.951802
+            lat:
+              description: latitude
+              type: number
+              example: 42.517126
+            id:
+              description: database id
+              type: integer
+              example: 1234
+            forecast_url:
+              description: wunderground forecast url
+              type: string
+            time:
+              description: time of last observation
+              type: string
+              example: "2015-08-13 09:00:08.0"
+            observations:
+              type: array
+              description: individual sensor observations
+              items:
+                type: object
+                description: individual sensor observation
+                properties:
+                  text:
+                    description: unknown?
+                    type: string
+                  type:
+                    description: sensor name
+                    type: string
+                    example: "spectroSurfaceTemperature"
+                  value:
+                    description: observed value
+                    type: number
+                    example: 24.2
+  alertPoly:
+    properties:
+      alertCategory:
+        type: string
+        description: Alert Category
+        example: "HTY"
+      alertCategoryName:
+        type: string
+        description: Alert Category Name
+        example: "Freeze Watch"
+      type:
+        type: string
+        description: Type of alert.
+        example: "MultiPolygon"
+      alert:
+        type: string
+        description: Original Alert text.
+      vtec:
+        type: string
+        description: vtec string
+      vtecBeginTime:
+        type: string
+        example: "2015-10-28T09:52:28Z"
+        description: Begin Time extracted from vtec string.
+      vtecEndTime:
+        type: string
+        example: "2015-10-28T09:52:28Z"
+        description: End Time extracted from vtec string.
+      alertUgcExpirationTime:
+        type: string
+        example: "2015-10-28T09:52:28Z"
+      ugcstring:
+        type: string
+        example: "IDZ018-019-022-023-025-031-032"
+      coordinates:
+        type: array
+        description: list of bounding boxes
+        items:
+          type: array
+          description: another list... why?
+          items:
+            type: array
+            description: list of coordinates describing bounding box
+            items:
+              type: array
+              description: "latitude/longitude coordinate"
+              items:
+                type: number
+            example: [[-116.36869812,46.4669113160001],[-116.364593506,46.4654121400001],[-116.361000061,46.46321106]]
+  radarList:
+    properties:
+      dimensions:
+        type: array
+        description: "x & y coordinates"
+        example: [531, 706]
+        items:
+          type: number
+      image_sequence:
+        type: array
+        description: "list of image filenames"
+        items:
+          type: string
+          description: "Image filenames in YYMMDDHHMM.png format."
+          example: "1511110930.png"
+      bounds:
+        type: object
+        properties:
+          top:
+            type: integer
+            example: 61
+          right:
+            type: integer
+            example: 5
+          bottom:
+            type: integer
+            example: 48
+          left:
+            type: integer
+            example: -12
+      radar_url:
+        type: string
+        description: base url to which image_sequence filenames should be appended
+        example: http://www.vaicld-test.com/radar/gb
+  roleList:
+    properties:
+      user:
+        type: string
+        description: username
+        example: aberdeencity
+      list:
+        type: array
+        items:
+          type: object
+          properties:
+            ltgData:
+              type: boolean
+              description: 'indicates availability of lightning data'
+            ticker:
+              type: boolean
+              description: 'indicates availability of forecast ticker'
+            metarData:
+              type: boolean
+              description: 'indicates availability of metar data'
+            graphData:
+              type: boolean
+              description: 'indicates availability of graph data'
+            role:
+              type: string
+              description: 'role name to be used in further rwis/metar/madis queries'
+              example: "idaho"
+            countryId:
+              type: string
+              description: '2 letter country code to be used in further radar queries'
+              example: "US"
+            role_description:
+              type: string
+              description: 'pretty role name'
+              example: "Idaho Department of Transport"
+            bounds:
+              type: boolean
+              description: 'indicates availability of lightning data'
+  lightningPointMetaData:
+    properties:
+      lat:
+        type: string
+        description: latitude
+        example: "46.635833"
+      lon:
+        type: string
+        description: longitude
+        example: "-114.580278"
+      closest_strike:
+        type: string
+        description: distance of closest strike in last X hours in miles
+        example: "0.00"
+      num_strikes_within_5:
+        type: string
+        description: "Only returned if miles=5: number of strikes within X hours and 5 miles"
+      num_strikes_within_7:
+        type: string
+        description: "number of strikes within X hours and 7 miles (Not returned if miles=5)"
+      num_strikes_within_20:
+        type: string
+        description: "number of strikes within X hours and 20 miles (Not returned if miles=5)"
+securityDefinitions:
+  basicAuth:
+    type: basic
+    description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`

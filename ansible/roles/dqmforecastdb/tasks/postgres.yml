@@ -1,0 +1,40 @@
+---
+- name: schema directory
+  file: path=/opt/schemas owner=postgres state=directory
+
+- name: initdb
+  command: service postgresql-9.3 initdb
+  args:
+    creates: /var/lib/pgsql/9.3/data/base
+    warn: False
+
+- name: install postgresql configuration files
+  template: src={{ item }}.j2 dest=/var/lib/pgsql/9.3/data/{{ item }} owner=postgres group=postgres mode=600
+  notify: restart postgres
+  with_items:
+    - postgresql.conf
+    - pg_hba.conf
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started
+
+- name: set postgres password
+  command: psql -w -U postgres -d postgres -c "alter user postgres with password '{{ postgres_password }}';"
+  changed_when: False
+  become_user: postgres
+
+- name: createdb
+  postgresql_db: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+    - qualmon2
+
+- name: Install postgis
+  shell: psql -w -U postgres -d {{ item }} -c "CREATE EXTENSION IF NOT EXISTS postgis;" && touch /opt/schemas/postgis_{{ item }}
+  with_items:
+      - qualmon2
+  args:
+      creates: /opt/schemas/postgis_{{ item }}
+  become_user: postgres
+
+- name: create nagios user
+  postgresql_user: name=nagios state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="LOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION" password={{ postgres_users['nagios']['password'] }}

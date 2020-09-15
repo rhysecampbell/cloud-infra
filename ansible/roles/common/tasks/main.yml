@@ -1,0 +1,91 @@
+---
+- name: Disable requiretty
+  lineinfile: dest=/etc/sudoers state=absent line='Defaults    requiretty'
+  tags: ssh
+
+- name: Install libselinux-python
+  yum: name=libselinux-python state=present
+  tags: ssh
+
+- name: Install EPEL
+  yum: name=epel-release state=present
+
+- name: Install PGDG
+  yum: name=http://yum.postgresql.org/9.3/redhat/rhel-6-x86_64/pgdg-centos93-9.3-2.noarch.rpm state=present
+
+- name: Remove old postgresql version
+  yum: name=postgresql-libs-8.* state=absent
+
+- name: Install base software
+  yum: name={{ item }} state=installed
+  with_items:
+      - ntp
+      - nrpe
+      - nagios-plugins-disk
+      - nagios-plugins-users
+      - nagios-plugins-load
+      - nagios-plugins-procs
+      - nagios-plugins-pgsql
+      - check_postgres
+      - perl-Time-HiRes
+      - perl-Nagios-Plugin
+      - fail2ban
+      - unzip
+      - nc
+      - git
+      - yum-plugin-versionlock
+      - ImageMagick
+      - postgresql93-libs
+
+- name: Set timezone.
+  file: src=/usr/share/zoneinfo/UTC  dest=/etc/localtime state=link force=yes
+
+- name: write /etc/hosts file
+  lineinfile: dest=/etc/hosts line="{{ item.ip }} {{ item.host }}" regexp=" {{ item.host }}"
+  with_items:
+    - { ip: "{{ db_float | default(\"#undefined \") }}", host: "db.vaicld.com" }
+    - { ip: "{{ lightningdb.host | default(\"#undefined \") }}", host: "lightning.db.vaicld.com" }
+    - { ip: "{{ duplicator | default(\"#undefined \") }}", host: "duplicator" }
+    - { ip: "193.143.230.59", host: "sso.vaisala.com" }
+    - { ip: "62.61.78.112", host: "hel-lds.vaisala.com" }
+    - { ip: "{{ soatest | default(\"192.101.77.46\") }}", host: "hel-soatest01.vaisala.com" }
+
+- name: Set hostname
+  hostname: name={{ inventory_hostname_short }}.{{ domain }}
+
+- name: Start & enable ntp
+  service: name=ntpd state=started enabled=yes
+
+- include: iptables.yml
+
+- include: nrpe.yml
+
+- include: rsyslog.yml
+
+- include: fail2ban.yml
+
+- include: simpleserver.yml
+
+- include: sendcc.yml
+
+- include: users.yml
+
+- name: Install MOTD
+  template: src=motd.j2 dest=/etc/motd
+
+- name: ntp.conf
+  template: src=ntp.conf.j2 dest=/etc/ntp.conf
+  notify: restart ntpd
+
+- name: addAlpha binary
+  copy: src=addAlpha dest=/usr/local/bin/addAlpha mode=0755
+
+- name: Remove versionlocks
+  command: yum versionlock clear warn=False
+  changed_when: False
+
+- name: Create mount directory.
+  file: path=/mnt/data state=directory
+
+- name: Set custom prompt colour
+  template: src=custom_prompt.sh.j2 dest=/etc/profile.d/custom_prompt.sh mode=0755

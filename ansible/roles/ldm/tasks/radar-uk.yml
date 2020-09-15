@@ -1,0 +1,3 @@
+---
+- name: Cron uk radar generation
+  cron: name="Generate UK Radar" cron_file=ansible_radar state=absent

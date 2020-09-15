@@ -1,0 +1,28 @@
+---
+- name: repmgr user
+  user: name=repmgr
+
+- name: repmgr
+  file: path=~postgres/repmgr state=directory owner=postgres group=postgres
+
+- name: repmgr-9.3.init
+  copy: src=repmgr-9.3.init dest=/etc/init.d/repmgr-9.3
+
+- name: Chmod /var/log/repmgr
+  file: path=/var/log/repmgr state=directory mode=0755 owner=postgres group=postgres
+
+- name: repmgrd
+  cron: cron_file=ansible_repmgr
+        user="postgres"
+        name="restart repmgr"
+        job='if ! pgrep repmgrd >/dev/null 2>&1 ; then ( /usr/pgsql-9.3/bin/repmgrd -f /var/lib/pgsql/repmgr/repmgr.conf --verbose --monitoring-history > /var/log/repmgr/repmgr.log 2>&1 & ) ; fi'
+        state=absent
+
+- name: repmgr cleanup
+  cron: cron_file=ansible_repmgr
+        user="postgres"
+        name="cleanup after repmgrd"
+        job='/usr/pgsql-9.3/bin/repmgr -f /var/lib/pgsql/repmgr/repmgr.conf cluster cleanup -k 1'
+
+- name: logrotate
+  copy: src=repmgr.logrotate dest=/etc/logrotate.d/repmgr

@@ -1,0 +1,27 @@
+[general]
+noauthsecret = backdoor
+username = demo
+password = demovai
+avicast_username = avicast
+avicast_password = {{ avicast_password | default("CHANGE_ME") }}
+avicast_regionid = {{ avicast_regionid | default(48) }}
+
+[dqmdb]
+dbn = postgres
+database = qualmon2
+port = 5432
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+host = {{ ip }}
+{% endfor %}
+user = postgres
+password = {{ postgres_password }}
+
+[dqmidb]
+dbn = postgres
+database = imagedb
+{% for ip in hostvars[groups['dqmimagedb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+host = {{ ip }}
+{% endfor %}
+port = 5432
+user = postgres
+password = {{ postgres_password }}

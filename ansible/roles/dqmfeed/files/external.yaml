@@ -1,0 +1,555 @@
+swagger: '2.0'
+info:
+  title: DQM API
+  description: |
+    Serves DQM data
+  version: "0.0.1"
+# the domain of the service
+#host: proc1.dqm.vaicld.com
+# array of all schemes that your API supports
+schemes:
+  - http
+# will be prefixed to all paths
+basePath: /api/v1
+produces:
+  - application/json
+tags:
+  - name: obs
+    description: Observations
+    externalDocs:
+      description: Find out more
+      url: https://confluence.vaisala.com/confluence/display/RWISiPad
+paths:
+  /dqmData/values:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/stationId"
+        - $ref: "#/parameters/noauth"
+        - $ref: "#/parameters/period"
+        - $ref: "#/parameters/offset"
+        - $ref: "#/parameters/regionId"
+        - $ref: "#/parameters/querymode"
+        - $ref: "#/parameters/geo"
+      tags:
+        - obs
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: object
+            $ref: '#/definitions/dqmDataValues'
+  /dqmData/meta:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/stationId"
+        - $ref: "#/parameters/noauth"
+        - $ref: "#/parameters/period"
+        - $ref: "#/parameters/offset"
+        - $ref: "#/parameters/regionId"
+        - $ref: "#/parameters/querymode"
+        - $ref: "#/parameters/geo"
+      tags:
+        - obs
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: object
+            $ref: '#/definitions/dqmDataMeta'
+  /dqmData/quality:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/stationId"
+        - $ref: "#/parameters/noauth"
+        - $ref: "#/parameters/period"
+        - $ref: "#/parameters/offset"
+        - $ref: "#/parameters/regionId"
+        - $ref: "#/parameters/querymode"
+        - $ref: "#/parameters/geo"
+      tags:
+        - obs
+      responses:
+        200:
+          description: An array of station observations
+          schema:
+            type: object
+            $ref: '#/definitions/dqmDataQuality'
+definitions:
+  queryMode:
+    type: string
+    description: Repeat of queryMode paraneter.
+    example: "insertionTime"
+  latestInsertionTime:
+    type: string
+    description: Latest insertion time.
+    example: "2015-08-13 09:00:08.0"
+  time:
+    description: time of observation
+    type: string
+    example: "2015-09-28 14:27:01"
+  stationName:
+    description: pretty name
+    type: string
+    example: "RWS200 @ Kaivoksela"
+  xmlTargetName:
+    description: xml_target_name
+    type: string
+    example: "Y38208"
+  codeSpace:
+    description: codespace
+    type: integer
+    example: 0
+  stationId:
+    description: vmdb_id
+    type: integer
+    example: 1234
+  regionId:
+    description: Region Id
+    type: integer
+    example: 567
+  country:
+    description: Country
+    type: string
+    example: "GB"
+  regionName:
+    description: Region Name
+    type: string
+    example: "North Yorkshire County Council"
+  regionDisplayName:
+    description: Even prettier Region Name?
+    type: string
+    example: "North Yorkshire County Council"
+  lon:
+    description: longitude
+    type: number
+    example: -116.951802
+  lat:
+    description: latitude
+    type: number
+    example: 42.517126
+  symbol:
+    type: string
+    example: "11"
+  sensorNo:
+    type: integer
+    example: 61017
+  sensorId:
+    type: integer
+    description: Unique sensorid
+    example: 39
+  sensorMasterId:
+    type: integer
+    description: Common sensorid for sensor type.
+    example: 39
+  nvalue:
+    type: integer
+    example: 99
+  qcTotal:
+    type: integer
+    example: 1
+  qcFailed:
+    type: integer
+    example: 0
+  status:
+    type: integer
+    example: 0
+    description: <0 for failure
+  testType:
+    type: integer
+    example: 1
+  uncertancy:
+    type: integer
+    example: 0
+  cameraNo:
+    type: integer
+    example: 1
+  imageSize:
+    type: integer
+    example: 61017
+  imageDetail:
+    type: number
+    format: float
+    example: 39.686
+  imageMean:
+    type: number
+    format: float
+    example: 99.073
+  imageVariance:
+    type: number
+    format: float
+    example: 3840.41
+  imageStatus:
+    type: integer
+    example: 0
+  dqmDataValues:
+    properties:
+      queryMode:
+        $ref: "#/definitions/queryMode"
+      latestInsertionTime:
+        $ref: "#/definitions/latestInsertionTime"
+      observations:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            stationId:
+              $ref: "#/definitions/stationId"
+            stationName:
+              $ref: "#/definitions/stationName"
+            region:
+              $ref: "#/definitions/regionId"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            dataSet:
+              type: array
+              description: list of timestamps with data
+              items:
+                type: object
+                description: data from this timestamp
+                properties:
+                  time:
+                    $ref: "#/definitions/time"
+                  values:
+                    type: array
+                    description: list of data for station
+                    items:
+                      type: object
+                      description: individual data items
+                      properties:
+                        symbol:
+                          $ref: "#/definitions/symbol"
+                        sensorNo:
+                          $ref: "#/definitions/sensorNo"
+                        sensorId:
+                          $ref: "#/definitions/sensorId"
+                        nvalue:
+                          $ref: "#/definitions/nvalue"
+                        qcTotal:
+                          $ref: "#/definitions/qcTotal"
+                        qcFailed:
+                          $ref: "#/definitions/qcFailed"
+  dqmDataQuality:
+    properties:
+      queryMode:
+        $ref: "#/definitions/queryMode"
+      latestInsertionTime:
+        $ref: "#/definitions/latestInsertionTime"
+      observations:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            stationId:
+              $ref: "#/definitions/stationId"
+            stationName:
+              $ref: "#/definitions/stationName"
+            region:
+              $ref: "#/definitions/regionId"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            dataSet:
+              type: array
+              description: list of timestamps with data
+              items:
+                type: object
+                description: data from this timestamp
+                properties:
+                  time:
+                    $ref: "#/definitions/time"
+                  values:
+                    type: array
+                    description: list of data for station
+                    items:
+                      type: object
+                      description: individual data items
+                      properties:
+                        symbol:
+                          $ref: "#/definitions/symbol"
+                        sensorNo:
+                          $ref: "#/definitions/sensorNo"
+                        sensorId:
+                          $ref: "#/definitions/sensorId"
+                        status:
+                          $ref: "#/definitions/status"
+                        testType:
+                          $ref: "#/definitions/testType"
+                        uncertancy:
+                          $ref: "#/definitions/uncertancy"
+  dqmDataMeta:
+    properties:
+      metaData:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            stationId:
+              $ref: "#/definitions/stationId"
+            stationName:
+              $ref: "#/definitions/stationName"
+            xmlTargetName:
+              $ref: "#/definitions/xmlTargetName"
+            codeSpace:
+              $ref: "#/definitions/codeSpace"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            regionId:
+              $ref: "#/definitions/regionId"
+            country:
+              $ref: "#/definitions/country"
+            regionName:
+              $ref: "#/definitions/regionName"
+            regionDisplayName:
+              $ref: "#/definitions/regionDisplayName"
+            sensorData:
+              type: array
+              description: list of sensor metadata
+              items:
+                type: array
+                description: metadata
+                items:
+                  type: object
+                  description: individual meta data items
+                  properties:
+                    symbol:
+                      $ref: "#/definitions/symbol"
+                    sensorNo:
+                      $ref: "#/definitions/sensorNo"
+                    sensorId:
+                      $ref: "#/definitions/sensorId"
+                    sensorMasterId:
+                      $ref: "#/definitions/sensorMasterId"
+  dqmImageValues:
+    properties:
+      queryMode:
+        $ref: "#/definitions/queryMode"
+      latestInsertionTime:
+        $ref: "#/definitions/time"
+      images:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            regionId:
+              $ref: "#/definitions/regionId"
+            stationId:
+              $ref: "#/definitions/stationId"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            dataSet:
+              type: array
+              description: list of timestamps with images
+              items:
+                type: object
+                description: images from this timestamp
+                properties:
+                  time:
+                    $ref: "#/definitions/time"
+                  values:
+                    type: array
+                    description: list of images for station
+                    items:
+                      type: object
+                      description: individual images
+                      properties:
+                        cameraNo:
+                          $ref: "#/definitions/cameraNo"
+                        imageSize:
+                           $ref: "#/definitions/imageSize"
+                        imageDetail:
+                          $ref: "#/definitions/imageDetail"
+                        imageMean:
+                          $ref: "#/definitions/imageMean"
+                        imageVariance:
+                          $ref: "#/definitions/imageVariance"
+                        imageStatus:
+                          $ref: "#/definitions/imageStatus"
+                        dqmStationId:
+                          $ref: "#/definitions/stationId"
+                        image:
+                          type: string
+                          description: base64 encoded image
+                        thumb:
+                          type: string
+                          description: base64 encoded thumbnail
+                        icon:
+                          type: string
+                          description: base64 encoded icon
+  dqmImageMeta:
+    properties:
+      queryMode:
+        $ref: "#/definitions/queryMode"
+      latestInsertionTime:
+        $ref: "#/definitions/time"
+      images:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            stationId:
+              $ref: "#/definitions/stationId"
+            stationName:
+              $ref: "#/definitions/stationName"
+            xmlTargetName:
+              $ref: "#/definitions/xmlTargetName"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            regionId:
+              $ref: "#/definitions/regionId"
+            country:
+              $ref: "#/definitions/country"
+            regionName:
+              $ref: "#/definitions/regionName"
+            regionDisplayName:
+              $ref: "#/definitions/regionDisplayName"
+            cameraData:
+              type: array
+              description: list of cameras for station
+              items:
+                type: object
+                description: individual cameras
+                properties:
+                  cameraNo:
+                    $ref: "#/definitions/cameraNo"
+                  imageTargetName:
+                    type: string
+                    example: "036f71ce_0641440c_cam1.jpg"
+                  cat_id:
+                    type: integer
+                    example: 513620
+  dqmImageQuality:
+    properties:
+      queryMode:
+        $ref: "#/definitions/queryMode"
+      latestInsertionTime:
+        $ref: "#/definitions/time"
+      images:
+        type: array
+        description: List of stations with images.
+        items:
+          type: object
+          properties:
+            regionId:
+              $ref: "#/definitions/regionId"
+            dqmStationId:
+              $ref: "#/definitions/stationId"
+            lon:
+              $ref: "#/definitions/lon"
+            lat:
+              $ref: "#/definitions/lat"
+            stationName:
+              $ref: "#/definitions/stationName"
+            dataSet:
+              type: array
+              description: list of timestamps with images
+              items:
+                type: object
+                description: images from this timestamp
+                properties:
+                  time:
+                    $ref: "#/definitions/time"
+                  values:
+                    type: array
+                    description: list of images for station
+                    items:
+                      type: object
+                      description: individual images
+                      properties:
+                        cameraNo:
+                          $ref: "#/definitions/cameraNo"
+                        imageSize:
+                           $ref: "#/definitions/imageSize"
+                        imageDetail:
+                          $ref: "#/definitions/imageDetail"
+                        imageMean:
+                          $ref: "#/definitions/imageMean"
+                        imageVariance:
+                          $ref: "#/definitions/imageVariance"
+                        imageStatus:
+                          $ref: "#/definitions/imageStatus"
+securityDefinitions:
+  basicAuth:
+    type: basic
+    description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`
+parameters:
+  stationId:
+    name: stationId
+    in: query
+    description: xml_target_name, NOT numerical id
+    required: false
+    type: string
+  noauth:
+    name: noauth
+    in: query
+    description: password bypassing basic auth requirement
+    required: false
+    type: string
+    format: password
+  period:
+    name: period
+    in: query
+    description: |
+        Time period based on ISO8601
+        
+        P[##M][##H][##M]
+    required: false
+    type: string
+  offset:
+    name: offset
+    in: query
+    description: |
+        Offset based on ISO8601
+        
+        P[##M][##H][##M]
+    required: false
+    type: string
+  regionId:
+    name: regionId
+    in: query
+    description: Numerical region id from station_identity table.
+    required: false
+    type: integer
+  querymode:
+    name: querymode
+    in: query
+    description: creationTime (default) OR insertionTime
+    required: false
+    type: string
+  geo:
+    name: geo
+    in: query
+    description: |
+        Bounding Box
+        
+        e.g. 90,-180,-90,180
+    required: false
+    type: string

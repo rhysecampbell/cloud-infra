@@ -1,0 +1,12 @@
+---
+pows_transfer_enabled: False
+logview_password: "CHANGE_ME"
+postgres_password: "CHANGE_ME"
+letsencrypt: False
+dqmweb_applications:
+    - dqmweb
+    - dqmproc
+    - dqmapp
+    - dqmforecast
+
+dqmforecastdb_local: False

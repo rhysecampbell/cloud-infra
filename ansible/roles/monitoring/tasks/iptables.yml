@@ -1,0 +1,8 @@
+---
+- name: iptables external
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'httpd', port: 80 }
+  tags: iptables

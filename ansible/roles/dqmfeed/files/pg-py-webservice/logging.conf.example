@@ -1,0 +1,40 @@
+[formatters]
+keys=detailed,simple,syslog
+
+[handlers]
+keys=console,file,syslog
+
+[loggers]
+keys=root
+
+[formatter_simple]
+datefmt=%Y%m%dT%H%M%S
+format=%(asctime)s %(levelname)s: %(ip)s %(method)s %(path)s %(name)s %(message)s
+
+[formatter_detailed]
+datefmt: %Y%m%dT%H%M%S
+format=%(asctime)s %(process)d %(thread)d %(levelname)s: %(ip)s %(method)s %(path)s %(name)s %(message)s
+
+[formatter_syslog]
+datefmt: %Y%m%dT%H%M%S
+format: pid=%(process)d thread="%(thread)d" level=%(levelname)s ip=%(ip)s method=%(method)s url=%(path)s module=%(name)s %(message)s
+
+[handler_console]
+class=StreamHandler
+args=[]
+formatter: detailed
+
+[handler_file]
+class=handlers.TimedRotatingFileHandler
+formatter=detailed
+args=('/tmp/pythonserver.log', 'H', 1, 5)
+
+[handler_syslog]
+class=handlers.SysLogHandler
+args:(('192.168.40.259',8514),)
+formatter=syslog
+
+# The default for any loggers that are not specified below
+[logger_root]
+level=INFO
+handlers=syslog

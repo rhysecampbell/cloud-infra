@@ -1,0 +1,84 @@
+deployment_name: dqm-pre
+nagiostemplates: True
+adminui_password: "{{ vault_adminui_password }}"
+db_float: 192.168.11.5
+db_master: 172.23.33.41
+domain: dqm.vaicld-pre.com
+duplicator: 192.168.11.1
+forecastdb:
+  host: 172.23.33.100
+  password: "{{ vault_forecastdb_password }}"
+  username: CHANGE_ME
+haproxy_password: "{{ vault_haproxy_password }}"
+lightningdb:
+  host: 172.23.33.100
+  password: "{{ vault_lightningdb_password }}"
+  username: CHANGE_ME
+log_server: 192.168.13.1
+ebs_service_url: http://192.101.77.46:26078
+postgres_password: "{{ vault_postgres_password }}"
+postgres_roles:
+  - authwrite
+  - cloudwrite
+  - metarwrite
+  - madiswrite
+  - obsread
+  - pgsqlchkgrp
+  - qualwrite
+postgres_users:
+  cloudserver:
+    password: "{{ vault_postgres_cloudserver_password }}"
+    roles: cloudwrite
+  frontend:
+    password: "{{ vault_postgres_frontend_password }}"
+    roles: obsread
+  madisserver:
+    password: "{{ vault_postgres_madisserver_password }}"
+    roles: madiswrite
+  metarserver:
+    password: "{{ vault_postgres_metarserver_password }}"
+    roles: metarwrite
+  nagios:
+    password: "{{ vault_postgres_nagios_password }}"
+    roles: obsread
+  pgsqlchkusr:
+    password: "{{ vault_postgres_pgsqlchkusr_password }}"
+    roles: pgsqlchkgrp
+  qualserver:
+    password: "{{ vault_postgres_qualserver_password }}"
+    roles: qualwrite
+  rolesmanagement:
+    password: "{{ vault_postgres_rolesmanagement_password }}"
+    roles: authwrite
+subnet: 192.168.9
+upstream_ldm:
+  - 192.168.10.7
+reboot_after_yum: False
+
+avicast_password: "{{ vault_avicast_password }}"
+
+tomcat_username: admin
+tomcat_password: "{{ vault_tomcat_password }}"
+
+letsencrypt: True
+
+danger_allowdatabasedrops_danger: True
+
+pows_address: 10.208.128.121:8080
+
+dqmprocjobs_observation_observationReader: False
+
+logview_password: "{{ vault_logview_password }}"
+
+sm_username: "sett-pre"
+sm_password: "{{ vault_sm_password }}"
+
+triton_password: "{{ vault_triton_password }}"
+triton_sendEmail: True
+
+triton_email_destination: "joe.price@vaisala.com"
+
+triton_ses_host: "email-smtp.us-west-2.amazonaws.com"
+
+triton_ses_username: "{{ vault_triton_ses_username }}"
+triton_ses_password: "{{ vault_triton_ses_password }}"

@@ -1,0 +1,10 @@
+---
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+               
+- name: restart iptables
+  service: name=iptables state=restarted
+
+- name: reload nrpe
+  service: name=nrpe state=reloaded

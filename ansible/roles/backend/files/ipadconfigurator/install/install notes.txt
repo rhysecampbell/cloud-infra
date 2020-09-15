@@ -1,0 +1,50 @@
+# http://www.rackspace.com/knowledge_center/article/installing-rhel-epel-repo-on-centos-5x-or-6x
+
+yum install httpd
+chkconfig --levels 235 httpd on
+mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.old
+
+service httpd restart
+
+mkdir /var/www/default
+echo Hello  > /var/www/default/index.html
+
+mkdir /var/www/ipadconfigurator
+mkdir /var/www/ipadconfigurator/log
+
+touch /var/www/ipadconfigurator/log/configurator.frontend.pl.log
+touch /var/www/ipadconfigurator/log/configurator.backend.pl.log
+chmod 774 -R /var/www/ipadconfigurator/log
+#chown ec2-user:apache -R /var/www/ipadconfigurator/log
+chown vaisala:apache -R /var/www/ipadconfigurator/log
+htpasswd -b -c /var/www/ipadconfigurator/passwords cloud cloud1423
+
+#chown ec2-user:apache /var/www/ipadconfigurator
+chown vaisala:apache /var/www/ipadconfigurator
+
+
+# copy files to server
+
+
+cp /var/www/ipadconfigurator/install/apacheConfig/httpd.conf /etc/httpd/conf/httpd.conf
+cp /var/www/ipadconfigurator/install/apacheConfig/AAAA_default.conf /etc/httpd/conf.d/
+cp /var/www/ipadconfigurator/install/apacheConfig/ipadconfigurator.conf /etc/httpd/conf.d/
+chmod 755 -R /var/www/ipadconfigurator/web/cgi/
+
+# perl-CGI-Simple is missing from the main repos: yum repolist enabled
+yum repolist
+#yum-config-manager --enable epel
+
+wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
+
+yum install perl-JSON perl-Template-Toolkit perl-CGI-Session perl-CGI-Simple perl-DateTime perl-Log-Log4perl
+
+## add to /etc/crontab
+cat >> /etc/crontab << EOF
+
+# Make sure logs do not get large. There are better ways of doing this...
+52 6    1 * *   apache  echo '-wipe-' > /var/www/ipadconfigurator/log/configurator.frontend.pl.log; echo '-wipe-' > /var/www/ipadconfigurator/log/configurator.backend.pl.log
+
+EOF

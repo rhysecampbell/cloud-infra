@@ -1,0 +1,21 @@
+#
+# JDBC properties for databases
+#
+#
+driver.oracle=oracle.jdbc.OracleDriver
+driver.postgres=org.postgresql.Driver
+
+########################
+# forecastdb UID/PWD
+db.forecast.uid=postgres
+db.forecast.pwd={{ postgres_password }}
+
+{% if dqmforecastdb_local %}
+db.forecast.url=jdbc:postgresql://localhost:5432/qualmon2
+{% else %}
+{% if 'dqmforecastdb' in groups %}
+{% for ip in hostvars[groups['dqmforecastdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+db.forecast.url=jdbc:postgresql://{{ ip }}:5432/qualmon2
+{% endfor %}
+{% endif %}
+{% endif %}

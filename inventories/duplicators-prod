@@ -1,0 +1,9 @@
+[duplicators-prod]
+duplicator ansible_ssh_host=23.253.54.81
+theduplicator2 ansible_ssh_host=104.130.214.12
+theduplicator3 ansible_ssh_host=166.78.113.137
+
+[duplicators]
+duplicator
+theduplicator2
+theduplicator3

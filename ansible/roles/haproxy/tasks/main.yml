@@ -1,0 +1,17 @@
+---
+- name: install haproxy
+  yum: name=haproxy state=installed
+
+- name: Create conf.d
+  file: path=/etc/haproxy/conf.d/ state=directory
+
+- name: Install main configuration file.
+  template: src=main.cfg.j2 dest=/etc/haproxy/conf.d/00-main.cfg
+  notify: merge haproxy config
+  tags: letsencrypt
+
+- name: Install dummy self-signed expired cert
+  copy: src=dummy.pem dest=/etc/pki/tls/private/letsencrypt.pem force=no mode=600 owner=root group=root
+
+- name: Ensure started on boot.
+  service: name=haproxy enabled=yes state=started

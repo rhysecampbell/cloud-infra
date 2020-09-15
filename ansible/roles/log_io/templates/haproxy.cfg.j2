@@ -1,0 +1,11 @@
+listen 38080-http
+{% if letsencrypt %}
+    bind *:38080 ssl no-tls-tickets no-sslv3 no-tlsv10 crt /var/lib/acme/haproxy/{{ ansible_nodename }} {% if extradomains is defined -%}{% for domain in extradomains -%}crt /var/lib/acme/haproxy/{{ domain }}{%- endfor %}{%- endif %}
+{% else %}
+    bind *:38080
+{% endif %}
+
+    option forwardfor
+    option http-server-close
+    capture request header X-Forwarded-For len 15
+    server localhost:38081 localhost:38081 check

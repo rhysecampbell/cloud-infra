@@ -1,0 +1,64 @@
+---
+- name: Shut down webapp
+  hosts: dqmweb
+  tasks:
+    - name: Shut down tomcat
+      service: name=tomcat state=stopped
+
+- name: Shut down simpleServer
+  hosts: dqmprocessor
+  tasks:
+      - name: Shut down simpleServers
+        service: name={{ item }} state=stopped
+        with_items:
+          - ss_dqm
+          - ss_imagedqm
+        tags: debug
+
+- name: Swap disks.
+  hosts: dangerwillrobinson
+  tasks:
+    - name: Shut down postgres
+      service: name=postgresql-9.3 state=stopped
+
+    - name: Unmount disks
+      mount: name=/mnt/data state=unmounted src={{ device_path | default("/dev/xvdb") }}1 fstype=ext4
+
+    - name: Waiting for disk to be detached - YOU NEED TO DO THIS IN THE RACKSPACE ADMIN PANEL
+      wait_for: path={{ device_path | default("/dev/xvdb") }}1 state=absent timeout=21600
+
+    - name: Waiting for disk to be cloned & reattached - YOU NEED TO DO THIS IN THE RACKSPACE ADMIN PANEL
+      wait_for: path={{ device_path | default("/dev/xvdb") }}1 state=present timeout=21600
+
+    - pause: prompt="Hit enter to continue... be sure as partition tables are about to be messed with..."
+
+    - name: Resize block device
+      shell: 'echo -e "d\nn\np\n1\n\n\nw" | fdisk {{ device_path | default("/dev/xvdb") }}'
+
+    - name: Check filesystem
+      command: e2fsck -f -p {{ device_path | default("/dev/xvdb") }}1
+
+    - name: Resize filesystem
+      filesystem: fstype=ext4 dev=/dev/xvdb1 resizefs=yes
+
+    - name: Mount New filesystem
+      mount: name=/mnt/data src="{{ device_path | default("/dev/xvdb") }}1" fstype=ext4 state=mounted
+
+    - name: Start postgres
+      service: name=postgresql-9.3 state=started
+
+- name: Start up webapp
+  hosts: dqmweb
+  tasks:
+    - name: Shut down tomcat
+      service: name=tomcat state=started
+
+- name: Start up simpleServer
+  hosts: dqmprocessor
+  tasks:
+      - name: Start up simpleServers
+        service: name={{ item }} state=started enabled=yes
+        with_items:
+          - ss_dqm
+          - ss_imagedqm
+        tags: debug

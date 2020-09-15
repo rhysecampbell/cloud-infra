@@ -1,0 +1,17 @@
+#!/bin/ksh
+
+rm -rf /home/ldm/scripts/tmp/
+rm -rf /tmp/json/*
+
+export PGUSER=postgres
+export PGDATABASE=weatherzones
+
+# first expire the expired polys, insert new ones, then expire again since some appear to be already expired
+date
+/home/ldm/scripts/expirePolys.pl
+sleep 3
+/home/ldm/scripts/polyParse.pl
+sleep 3
+/home/ldm/scripts/expirePolys.pl
+date
+echo

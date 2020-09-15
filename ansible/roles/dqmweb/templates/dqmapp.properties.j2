@@ -1,0 +1,23 @@
+#
+# DqmApp properties
+#
+
+# image service
+{% if 'dqmprocessor' in groups %}
+{% for ip in hostvars[groups['dqmprocessor'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+dqmimage.service.url=http://{{ ip }}/api/v1/dqmImage/
+{% endfor %}
+{% endif %}
+
+# what is the default folder for DQM reports?
+config.report.folder=/etc/vaisala/dqm/reports/
+
+#
+# where is EBS?
+#
+# PLEASE NOTE: this is also a required entry in etc/hosts, pointing to the wizardry of JESP 
+# What's better is, you can't change this config entry
+# because SOAP makes a second request and passes the URL they want to call directly
+# so, there's that. Which is nice.
+#
+ebs.service.url={{ ebs_service_url | default("http://hel-soatest01.vaisala.com:8080") }}

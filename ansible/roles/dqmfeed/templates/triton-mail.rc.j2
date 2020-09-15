@@ -1,0 +1,10 @@
+account triton {
+set smtp-use-starttls
+set smtp-auth=login
+set smtp=smtp://{{ triton_ses_host }}:587
+set from="triton-alerts@{{ domain }}(Triton Alerts)"
+set smtp-auth-user={{ triton_ses_username }}
+set smtp-auth-password={{ triton_ses_password }}
+set ssl-verify=ignore
+set nss-config-dir=/etc/pki/nssdb/
+}

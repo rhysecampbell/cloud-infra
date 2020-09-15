@@ -1,0 +1,51 @@
+################################################################################
+# configuration file for postgresql 'DQMdataFeed' web interface to DQMServer   #
+#                                                                              #
+# this file MUST reside in the </etc/vaisala-config/do-dqmfeed> directory      #
+# BJT November 2014                                                            #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = DEBUG
+LogToFile = yes
+LogFilePath = /var/log/dqm/data
+
+#################################
+# web server setup
+ServerPort = 8800
+
+# Basic Authentication stuff
+user = demo
+password = demovai
+
+# 'backdoor' access for ***testing****
+# Overrides Basic Authentication
+noauth = backdoor
+
+##########################
+
+SetClientEncoding = yes
+ClientCharset = UTF8
+
+###########################
+
+# creationLookbackPeriod = 720
+# compressionThreshold = 5000
+# CompressOutputMessage = true
+# CompressBufferSizeDivider = 4
+
+############################
+
+# postgres or pg_bouncer port
+PostgresPort = 5432
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+PostgresServerAddr = {{ ip }}
+{% endfor %}
+PostgresDBName = qualmon2
+PostgresUser = postgres
+PostgresPassword = {{ postgres_password }}

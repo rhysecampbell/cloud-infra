@@ -1,0 +1,238 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+html {
+    position: relative;
+    min-height: 100%;
+}
+body {
+	background-color: #ECECEC;
+	color: #222222;
+	font-family: Verdana,Arial,Helvetica,sans-serif;
+	padding: 0;
+}
+
+footer {
+    left: 0;
+    bottom: 0;
+    height: 30px;
+    width: 100%;
+    margin: 10px 10px
+/*    background-color: #949494;
+    color: #ffffff;*/
+}
+/*.wrapper {
+	min-height: 100%;
+	height: auto !important;
+	height: 100%;
+	margin: 0 auto -4em;
+	}
+.footer, .push {
+	height: 4em;
+}*/
+
+#resultsTable {
+	margin: 10px 100px;
+	font-weight: bold;
+}
+
+.actionMessage {
+	color: #E60000;
+}
+
+.nowrap{ white-space: nowrap }
+
+/* css for timepicker */
+.ui-timepicker-div .ui-widget-header { margin-bottom: 8px; }
+.ui-timepicker-div dl { text-align: left; }
+.ui-timepicker-div dl dt { height: 25px; margin-bottom: -25px; }
+.ui-timepicker-div dl dd { margin: 0 10px 10px 65px; }
+.ui-timepicker-div td { font-size: 60%; }
+.ui-tpicker-grid-label { background: none; border: none; margin: 0; padding: 0; }
+
+.ui-timepicker-rtl{ direction: rtl; }
+.ui-timepicker-rtl dl { text-align: right; }
+.ui-timepicker-rtl dl dd { margin: 0 65px 10px 10px; }
+
+#tabs, #ui-datepicker-div, .ui-datepicker{ font-size: 75%; }
+
+
+.box { font: 10px sans-serif; }
+.box line, .box rect, .box circle { stroke: #000; stroke-width: 1.5px; fill: #fff; }
+.box .center { stroke-dasharray: 3 3; }
+.box .outlier { stroke: #ccc; fill: none; }
+
+.labels { text-align: center; font-weight:bold; }
+td.labels { border-style:solid; border-width:1px; }
+
+
+#banner {
+	background: url("/images/banner-bg.png") repeat-x scroll 100% 100% transparent;
+	height: 45px !important;
+	margin-top: 0;
+	position: relative;
+	width: 100%;
+}
+#banner a {
+	display: block;
+	float: left;
+	height: 45px;
+	text-indent: -9000px;
+	width: 260px;
+}
+#banner a.link-vaisala-logo {
+	background: url("/images/vaisala-logo.png") no-repeat scroll left center transparent;
+}
+#banner p {
+	font-family: serif;
+	line-height: 24px;
+	color: #FFFFFF;
+	float: left;
+	font-size: 17px;
+	position: relative;
+	right: 150px;
+	top: 9px;
+}
+
+.notes {
+	font-size: 11px;
+	font-weight: normal;
+}
+
+#mainTable {
+	border-collapse:collapse;
+}
+#mainTable td {
+	vertical-align:top;
+}
+#sideMenu {
+	margin: 40px 0;
+	border:1px solid;
+}
+
+#mainPage {
+	margin: 40px 100px auto;
+	text-align: left;
+	width: 875px;
+}
+#mainPage, #mainPage h1, #mainPage td {
+	font-size: 12px;
+}
+#mainPage h1 {
+	font-weight: bold;
+	margin: 0;
+	padding: 5px 20px;
+}
+#mainPage h2 {
+	color: #00728F;
+	font-weight: normal;
+	margin: 0;
+	padding-bottom: 15px;
+	padding-top: 0;
+}
+
+.header {
+	-moz-border-bottom-colors: none;
+	-moz-border-left-colors: none;
+	-moz-border-right-colors: none;
+	-moz-border-top-colors: none;
+	background: url("/images/panelheader-bg.png") repeat-x scroll 0 0 #FAFAFA;
+	border: 1px solid #B5B5B5;
+	border-image: none;
+	border-radius: 5px 5px 0 0;
+	border-style: solid solid none;
+	border-width: 1px 1px medium;
+}
+#release-version {
+	color: #717171;
+	float: right;
+	font-size: 10px;
+	position: relative;
+	right: 20px;
+	top: -20px;
+}
+#release-version-text {
+	float: left;
+}
+#release-version-number {
+	float: left;
+	padding-left: 5px;
+}
+.plotBody {
+	-moz-border-bottom-colors: none;
+	-moz-border-left-colors: none;
+	-moz-border-right-colors: none;
+	-moz-border-top-colors: none;
+	background: -moz-linear-gradient(center top , #ECECEC, #FAFAFA) repeat scroll 0 0 transparent;
+	border: 1px solid #B5B5B5;
+	border-image: none;
+	border-radius: 0 0 5px 5px;
+	border-right: 1px solid #B5B5B5;
+	border-style: none solid solid;
+	border-width: medium 1px 1px;
+	padding: 20px;
+}
+
+.plotTable td {
+    vertical-align: top;
+}
+
+.ui-autocomplete-loading {
+	background: white url('/css/images/ui-anim_basic_16x16.gif') right center no-repeat;
+}
+
+
+#searchlist td {
+	valign: top;
+}
+
+
+#sidebar {
+  width: 0px;
+}
+
+#content {
+  width: 770px;
+}
+
+.editable input[type=submit] {
+  color: #F00;
+  font-weight: bold;
+}
+.editable input[type=button] {
+  color: #0F0;
+  font-weight: bold;
+}
+
+/* For the ajon jquery autocomplete combobox with scrollbar */
+.custom-combobox {
+	position: relative;
+	display: inline-block;
+	margin-right: 40px;
+}
+
+.custom-combobox-toggle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	margin-left: -1px;
+	padding: 0;
+	/* support: IE7 */
+	*height: 1.7em;
+	*top: 0.1em;
+}
+.custom-combobox-input {
+	margin: 0;
+	padding: 0.2em;
+}
+/* http://forum.jquery.com/topic/autocomplete-with-vertical-scrollbar  */
+.ui-autocomplete { height: 200px; overflow-y: scroll; overflow-x: hidden;}
+
+
+/* For the ajon jquery autocomplete combobox with scrollbar */
+.ui-combobox { display: inline-block; margin: 0; margin-right: 1.8em; position: relative; }
+.ui-combobox-input { padding: 0.2em; margin: 0; }
+.ui-combobox-button { position: absolute; width: 1.8em !important; margin: 0; margin-left: -1px; top: 0; bottom: 0; }
+.ui-combobox-button .ui-button-text { padding: 0em; }
+.ui-combobox .ui-autocomplete { max-height: 10em; overflow-y: auto; overflow-x: hidden; }

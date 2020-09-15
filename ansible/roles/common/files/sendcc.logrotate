@@ -1,0 +1,8 @@
+/var/log/sendcc/*.log {
+    daily
+    rotate 1
+    missingok
+    sharedscripts
+    notifempty
+    compress
+}

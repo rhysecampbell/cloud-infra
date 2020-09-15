@@ -1,0 +1,13 @@
+deployment_name: duplicators-prod
+adminui_password: "{{ vault_adminui_password }}"
+
+db_float: 192.168.10.100
+db_master: 192.168.10.41
+
+domain: vaicld.com
+
+subnet: 192.168.11
+
+letsencrypt: False
+
+discovery_url: https://discovery.etcd.io/506dafeb1b6bebc8725bd9d9b20f1afc

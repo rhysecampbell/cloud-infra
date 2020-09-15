@@ -1,0 +1,8 @@
+---
+- name: known_hosts
+  template: src=known_hosts.j2 dest=~postgres/.ssh/known_hosts owner=postgres group=postgres mode=0644
+
+- include: repmgr.yml
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started

@@ -1,0 +1,106 @@
+---
+- name: Pre-restore checks.
+  hosts: all
+  any_errors_fatal: True
+  tasks:
+    - name: Check for scary variable.
+      fail: msg="If you really want to run, you'll need to set danger_allowdatabasedrops_danger in the variables file."
+      when: danger_allowdatabasedrops_danger is not defined or not danger_allowdatabasedrops_danger
+
+- name: Web Server
+  hosts: dqmweb
+  tasks:
+    - service: name=tomcat state=stopped
+
+- name: Processor Server
+  hosts: dqmprocessor
+  tasks:
+    - service: name=ss_dqm state=stopped
+
+- name: Database Server
+  hosts: dqmdb
+  tasks:
+    - name: Restart postgresql
+      service: name=postgresql-9.3 state=restarted
+
+    - name: Drop old database.
+      postgresql_db: name=qualmon2 state=absent login_host=localhost login_user=postgres login_password={{ postgres_password }}
+
+    - name: copy schemas
+      copy: src={{ item.directory }}/{{ item.filename }}.sql dest=/opt/schemas/{{ item.filename }}.sql
+      with_items:
+        - { filename: 'qualmon2', directory: '../roles/dqmdb/files/schemas/' }
+        - { filename: 'qualmon2-backup', directory: '/tmp/' }
+
+    - name: copy backup
+      copy: src=/tmp/qualmon2-backup.sql dest=/opt/schemas/qualmon2-backup.sql
+
+    - name: createdb
+      postgresql_db: name=qualmon2 state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+
+    - name: install schemas
+      shell: psql -w -U postgres -d qualmon2 -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.sql.used
+      with_items:
+        - qualmon2
+      become_user: postgres
+
+- name: Web Server
+  hosts: dqmweb
+  tasks:
+    - name: delete tomcat files
+      shell: rm -rf /usr/share/tomcat/{{ item }}/*
+      with_items:
+        - work
+        - webapps/dqmapp
+        - webapps/dqmweb
+        - webapps/dqmproc
+        - webapps/dqmforecast
+
+    - name: start tomcat
+      service: name=tomcat state=started
+
+    - name: wait for tomcat to start
+      wait_for: port=8080
+
+    - name: Give it another few seconds.
+      pause: seconds=10
+
+    - name: touch wars
+      file: path=/usr/share/tomcat/webapps/{{ item }}.war state=touch
+      with_items:
+        - dqmweb
+        - dqmapp
+        - dqmproc
+        - dqmforecast
+
+    - pause: prompt="Verify flywaydb upgrade has completed successfully."
+
+    - service: name=tomcat state=stopped
+
+- name: Database Server
+  hosts: dqmdb
+  tasks:
+    - name: install schemas
+      shell: psql -w -U postgres -d qualmon2 -f /opt/schemas/{{ item }}.sql >/tmp/restore.log 2>/tmp/restore.err && touch /opt/schemas/{{ item }}.sql.used
+      with_items:
+        - qualmon2-backup
+      become_user: postgres
+
+    - name: Drop pows config
+      shell: psql -w -U postgres -d qualmon2 -c "UPDATE qm.station_alias_identity SET pows=NULL;"
+      become_user: postgres
+      when: keeppowsconfig | default(True)
+
+    - name: create Partitions
+      command: ~postgres/manage_partitions.sh
+      become_user: postgres
+
+- name: Web Server
+  hosts: dqmweb
+  tasks:
+    - service: name=tomcat state=started
+
+- name: Processor Server
+  hosts: dqmprocessor
+  tasks:
+    - service: name=ss_dqm state=started

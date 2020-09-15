@@ -1,0 +1,120 @@
+# {{ ansible_managed }}
+{% if 'backends' in groups %}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-backends
+        alias			Backends ({{ deployment_name }})
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-backends
+	alias			Backends ({{ deployment_name }})
+	}
+
+{% for host in groups['backends'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+{% if host in groups['corecluster'] %}
+	hostgroups 		+{{ deployment_name }}-backends,{{ deployment_name }}-databases,{{ deployment_name }}-core-databases
+{% else %}
+	hostgroups 		+{{ deployment_name }}-backends
+{% endif %}
+
+}
+{% endfor %}
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     30001-haproxy-quality
+        check_command           check_http!-p 30001 -e "405 Method Not Allowed"
+        display_name            30001-haproxy-quality
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     40001-haproxy-cloud
+        check_command           check_http!-p 40001 -e "405 Method Not Allowed"
+        display_name            40001-haproxy-cloud
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description     50001-haproxy-metar
+        check_command           check_http!-p 50001 -e "405 Method Not Allowed"
+        display_name            50001-haproxy-metar
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+	service_description	Recent Obs
+	check_command		{{ deployment_name }}-check_nrpe!check_latest_obs
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+	}
+
+define service{
+	use			{{ deployment_name }}-service
+	service_description	Recent Metar
+	check_command		{{ deployment_name }}-check_nrpe!check_latest_metar
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+	}
+
+{% if upstream_ldm_madis is defined %}
+define service{
+	use			{{ deployment_name }}-service
+	service_description	Recent Madis
+	check_command		{{ deployment_name }}-check_nrpe!check_latest_madis
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+	}
+{% endif %}
+
+define service{
+        use                     {{ deployment_name }}-nrpe-disk
+        service_description     /mnt/data
+        check_command           {{ deployment_name }}-check_nrpe!check_mntdata
+        display_name            /mnt/data
+        hostgroups              {{ deployment_name }}-backends
+        }
+
+define service{
+        use                     {{ deployment_name }}-nrpe-disk
+        service_description     /home/data
+        check_command           {{ deployment_name }}-check_nrpe!check_homedata
+        display_name            /home/data
+        hostgroups              {{ deployment_name }}-backends
+        }
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	sendcc queue - qualityServer output
+	check_command		{{ deployment_name }}-check_nrpe!check_qualityServer_output_queue
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+	}
+
+{% for number in ('one', 'two', 'three', 'four') %}
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	sendcc queue - input {{ number }}
+	check_command		{{ deployment_name }}-check_nrpe!check_sendcc_input_{{ number }}
+        servicegroups           {{ deployment_name }}-backends
+	hostgroup_name		{{ deployment_name }}-backends
+	}
+{% endfor %}
+
+{% endif %}

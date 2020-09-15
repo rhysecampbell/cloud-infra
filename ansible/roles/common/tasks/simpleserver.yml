@@ -1,0 +1,37 @@
+---
+
+- name: install packages
+  yum: name={{ item }} state=installed
+  with_items:
+    - libpqxx
+    - libjpeg
+    - muParser
+
+- name: install simpleserver
+  copy: src=simpleServer dest=/usr/local/bin/simpleServer mode=0755
+  register: simpleServer_updated
+
+- name: create links
+  file: src=/usr/local/bin/simpleServer dest=/usr/local/bin/{{ item }}Server state=link
+  with_items:
+    - quality
+    - cloud
+    - image
+    - metar
+    - dqm
+
+- name: create /etc/vaisala-config
+  file: path=/etc/vaisala-config state=directory
+
+- name: create /etc/vaisala-config/do-simserver
+  file: path=/etc/vaisala-config/do-simserver state=directory
+
+- name: create /var/log/simpleserver
+  file: path=/var/log/simpleserver state=directory
+
+- name: Cron simpleserver quality log cleanup
+  cron: cron_file=ansible_simpleserver
+        user=root
+        name="Cleanup old logfiles"
+        special_time=daily
+        job="find /var/log/simpleserver/ -type f -mtime +3 -delete >/dev/null 2>&1"

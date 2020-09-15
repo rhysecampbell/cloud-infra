@@ -1,0 +1,14 @@
+---
+administrators:
+    - jpc
+    - jesp
+    - bl
+    - hwo
+    - rwg
+    - tg
+    - jnb
+    - jcr
+lightningdb: {}
+
+administrators_disabled:
+    - rec

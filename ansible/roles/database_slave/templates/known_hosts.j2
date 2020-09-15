@@ -1,0 +1,7 @@
+{% for host in groups['corecluster_master'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+{{ ip }} ssh-rsa {{ hostvars[host].ansible_ssh_host_key_rsa_public }}
+{% endif %}
+{% endfor %}
+{% endfor %}

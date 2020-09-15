@@ -1,0 +1,101 @@
+---
+- name: logging.properties
+  copy: src=logging.properties dest=/usr/share/tomcat/conf
+  notify: restart tomcat
+
+- name: war configuration files
+  template: src={{ item }}.j2 dest=/etc/vaisala-config/{{ item }}
+  notify: restart tomcat
+  with_items:
+        - jdbc.properties
+        - jdbc-forecast.properties
+        - dqmapp.properties
+        - dqmweb.properties
+        - dqmproc.properties
+        - dqmforecast.properties
+  tags: 
+      - dqmweb-wars
+      - log.io
+
+- name: Upload dqmapp
+  copy: src={{ dqmapp_download.dest }} dest=/usr/share/tomcat/webapps/dqmapp.war
+  tags: dqmweb-wars
+  register: dqmappupload
+  when: '"dqmapp" in dqmweb_applications'
+
+- name: Upload dqmweb
+  copy: src={{ dqmweb_download.dest }} dest=/usr/share/tomcat/webapps/dqmweb.war
+  tags: dqmweb-wars
+  register: dqmwebupload
+  when: '"dqmweb" in dqmweb_applications'
+
+- name: Upload dqmproc
+  copy: src={{ dqmproc_download.dest }} dest=/usr/share/tomcat/webapps/dqmproc.war
+  tags: dqmweb-wars
+  register: dqmprocupload
+  when: '"dqmproc" in dqmweb_applications'
+
+- name: Upload dqmforecast
+  copy: src={{ dqmforecast_download.dest }} dest=/usr/share/tomcat/webapps/dqmforecast.war
+  tags: dqmweb-wars
+  register: dqmforecastupload
+  when: '"dqmforecast" in dqmweb_applications'
+
+- name: stop tomcat
+  service: name=tomcat state=stopped enabled=yes
+  when: dqmappupload.changed or dqmwebupload.changed or dqmprocupload.changed or dqmforecastupload.changed
+  tags: dqmweb-wars
+
+- name: delete tomcat files
+  shell: rm -rf /usr/share/tomcat/{{ item }}/*
+  with_items:
+    - work
+    - webapps/dqmapp
+    - webapps/dqmweb
+    - webapps/dqmproc
+    - webapps/dqmforecast
+  when: dqmappupload.changed or dqmwebupload.changed or dqmprocupload.changed or dqmforecastupload.changed
+  tags: dqmweb-wars
+
+- name: start tomcat
+  service: name=tomcat state=started enabled=yes
+  tags: dqmweb-wars
+
+- name: Wait for tomcat to start.
+  wait_for: port=8080
+  tags: dqmweb-wars
+
+- name: Give tomcat a little longer
+  pause: seconds=5
+
+- name: touch wars again
+  file: path=/usr/share/tomcat/webapps/{{ item }}.war state=touch
+  with_items: "{{ dqmweb_applications }}"
+  when: dqmappupload.changed or dqmwebupload.changed or dqmprocupload.changed or dqmforecastupload.changed
+  tags: dqmweb-wars
+
+- name: wait for app deployment
+  wait_for: path=/usr/share/tomcat/webapps/{{ item }}/WEB-INF
+  with_items: "{{ dqmweb_applications }}"
+  when: dqmappupload.changed or dqmwebupload.changed or dqmprocupload.changed or dqmforecastupload.changed
+  tags: dqmweb-wars
+
+- name: Install haproxy config
+  template: src=haproxy.cfg.j2 dest=/etc/haproxy/conf.d/frontend.cfg
+  notify: merge haproxy config
+  tags: letsencrypt
+
+- include: iptables.yml
+
+- name: cleanup old tomcat log files
+  cron: cron_file=ansible_cleanup
+        user="root"
+        name="cleanup old tomcat log files"
+        state=absent
+
+- name: Create Report Folders
+  file: path={{ item }} state=directory owner=tomcat
+  with_items:
+    - /etc/vaisala
+    - /etc/vaisala/dqm
+    - /etc/vaisala/dqm/reports

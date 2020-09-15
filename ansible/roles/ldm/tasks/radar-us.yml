@@ -1,0 +1,11 @@
+---
+- name: Copy scripts
+  template: src={{ item }}.j2 dest=~ldm/bin/radar/add_alpha/{{ item }} owner=ldm group=ldm mode=0744
+  with_items:
+    - radar-maker-us.sh
+
+- name: Copy us background
+  copy: src=us_background_cropped_small.png dest=~ldm/bin/radar/add_alpha/resources/us_background_cropped_small.png owner=ldm group=ldm
+
+- name: Cron us radar generation
+  cron: name="Generate US Radar" minute="*/5" job="/home/ldm/bin/radar/add_alpha/radar-maker-us.sh >/dev/null 2>&1" user="ldm" cron_file=ansible_radar

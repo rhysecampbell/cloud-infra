@@ -1,0 +1,217 @@
+---
+- name: Fix ssh permissions on windows.
+  hosts: localhost
+  connection: local
+  become: False
+  tasks:
+    - name: chmod 0600 private_key
+      file:
+        path: "{{ playbook_dir }}/../.vagrant/machines/{{ item }}/virtualbox/private_key"
+        mode: 0600
+      with_items: "{{ groups['all'] }}"
+      when: "'vagrant' in groups and ansible_distribution.startswith('CYGWIN')"
+
+- name: Set correct defaults & gather facts
+  hosts: all
+  tasks:
+    - name: Forcing fact gathering on all hosts. No reliance on fact caching.
+      debug: msg="Sneaky!"
+      tags: always
+
+- name: Common & Prerequisites
+  hosts: all:!monitoringglobal
+  roles:
+    - role: common
+
+- name: letsencrypt
+  hosts: dqmprocessor:dqmweb:frontends
+  roles:
+    - role: letsencrypt
+  tags: letsencrypt
+
+- name: PostgreSQL
+  hosts: corecluster:forecastdb:dqmdb:dqmimagedb:dqmforecastdb
+  roles:
+    - role: database
+
+- name: Core PostgreSQL (Master)
+  hosts: corecluster_master
+  roles:
+    - role: database_master
+
+- name: Core PostgreSQL (Slave)
+  hosts: corecluster_slave
+  roles:
+    - role: database_slave
+
+- name: ForecastDB
+  hosts: forecastdb
+  roles:
+    - role: forecast
+    - { role: simpleServer, service_name: 'forecast', daemon: '/usr/local/bin/simpleServer' }
+
+- name: Backends
+  hosts: backends
+  roles:
+    - role: haproxy
+    - role: backend
+
+- name: Backend simpleServers
+  hosts: backends
+  roles:
+    - { role: simpleServer, service_name: 'quality', daemon: '/usr/local/bin/qualityServer' }
+    - { role: simpleServer, service_name: 'cloud', daemon: '/usr/local/bin/cloudServer' }
+    - { role: simpleServer, service_name: 'metar', daemon: '/usr/local/bin/metarServer' }
+    - { role: simpleServer, service_name: 'madis', daemon: '/usr/local/bin/simpleServer' }
+
+- name: Webservers
+  hosts: frontends
+  roles:
+    - { role: simpleServer, service_name: 'image', daemon: '/usr/local/bin/imageServer' }
+    - role: haproxy
+    - role: frontend
+
+- name: LDM Servers
+  hosts: ldm
+  roles:
+    - role: ldm
+
+- name: Duplicators
+  hosts: duplicators
+  roles:
+    - { role: simpleServer, service_name: 'image', daemon: '/usr/local/bin/imageServer' }
+    - { role: simpleServer, service_name: 'rwis', daemon: '/usr/local/bin/simpleServer' }
+    - role: duplicator
+  vars:
+    - SaveXMLToFile: yes
+
+- name: DQM processor
+  hosts: dqmprocessor
+  roles:
+    - role: haproxy
+    - { role: simpleServer, service_name: 'dqm', daemon: '/usr/local/bin/dqmServer' }
+    - { role: simpleServer, service_name: 'imagedqm', daemon: '/usr/local/bin/imageServer' }
+    - { role: dqmfeed }
+
+- name: DQM database
+  hosts: dqmdb
+  roles:
+    - role: dqmdb
+
+- name: DQM image database
+  hosts: dqmimagedb
+  roles:
+    - role: dqmimagedb
+
+- name: DQM forecast database
+  hosts: dqmforecastdb
+  roles:
+    - role: dqmforecastdb
+
+
+- name: Fetch dqm war files from NEXUS
+  hosts: dqmweb
+  connection: local
+  become: False
+  tasks:
+    - nexus: nexus=https://nexus.vaisala.com/nexus
+             repository={{ dqm_repository }}
+             artifactId=com.vaisala.dqm:dqmapp:{{ dqm_version }}
+             force=false
+      register: dqmapp_download
+    - nexus: nexus=https://nexus.vaisala.com/nexus
+             repository={{ dqm_repository }}
+             artifactId=com.vaisala.dqm:dqmweb:{{ dqm_version }}
+             force=false
+      register: dqmweb_download
+    - nexus: nexus=https://nexus.vaisala.com/nexus
+             repository={{ dqm_repository }}
+             artifactId=com.vaisala.dqm:dqmproc:{{ dqm_version }}
+             force=false
+      register: dqmproc_download
+    - nexus: nexus=https://nexus.vaisala.com/nexus
+             repository={{ dqm_repository }}
+             artifactId=com.vaisala.dqm:dqmforecast:{{ dqm_version }}
+             force=false
+      register: dqmforecast_download
+  vars_files:
+    - dqm-version
+  tags:
+    - dqmweb-wars
+
+
+- name: DQM Web Interface
+  hosts: dqmweb
+  roles:
+    - role: tomcat-standalone
+    - role: haproxy
+    - role: dqmweb
+  vars_files:
+    - dqm-version
+
+- name: Swaggerui
+  hosts: frontends:dqmprocessor
+  roles:
+    - role: swaggerui
+
+- name: log.io
+  hosts: dqmprocessor
+  roles:
+    - role: log_io
+  tags:
+    - log.io
+
+- name: Monitoring Server Install
+  hosts: monitoring:!monitoringglobal
+  roles:
+    - role: monitoring
+    - { role: rackspaceaudit, when: rackspace_api_username is defined, tags: [ 'rackmon', ] }
+  vars_files:
+    - dqm-version
+
+- name: Record rackmon private key
+  hosts: monitoring:monitoringglobal
+  tasks:
+    - name: Record private key
+      command: cat ~rackmon/.ssh/id_rsa.pub
+      register: rackmon_ssh_key
+      changed_when: False
+  tags:
+    - rackmon
+
+- name: rackmon client user
+  hosts: all
+  tasks:
+      - user: name=rackmon
+      - authorized_key: user=rackmon key={{ hostvars[item].rackmon_ssh_key.stdout }} key_options='command="yum -q check-update"'
+        with_items: "{{ groups['monitoring'] }}"
+        when: '"monitoring" in groups and "rackmon_ssh_key" in hostvars[item] and "stdout" in hostvars[item].rackmon_ssh_key'
+  tags: rackmon
+
+- name: Monitoring Server Templates
+  hosts: monitoring
+  roles:
+      - { role: nagiostemplates, when: deployment_name is defined and nagiostemplates is defined and nagiostemplates }
+  vars_files:
+    - dqm-version
+
+- name: Local Metadata
+  hosts: localhost
+  connection: local
+  become: False
+  tasks:
+    - name: fetch git commit
+      command: "git log --name-status HEAD^..HEAD"
+      args:
+          warn: False
+      register: git_name_status
+      changed_when: False
+    - name: Print git commit
+      debug: var=git_name_status
+
+- name: Store Git Revision
+  hosts: frontends:backends:dqmprocessor
+  tasks:
+    - name: store git revision
+      copy: content="{{ hostvars['127.0.0.1'].git_name_status.stdout }}" dest=/var/www/html/git-revision
+      changed_when: False

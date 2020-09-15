@@ -1,0 +1,26 @@
+---
+- name: Remove nfs-utils
+  yum: name=nfs-utils state=absent #currently conflicts with pgdg
+
+- name: pgbouncer.ini
+  copy: src=pgbouncer.ini dest=/etc/pgbouncer/pgbouncer.ini
+  notify: reload pgbouncer
+
+- name: userlist.txt
+  template: src=userlist.txt dest=/etc/pgbouncer/userlist.txt
+  notify: reload pgbouncer
+
+- name: enable pgbouncer service
+  service: name=pgbouncer state=started enabled=yes
+  ignore_errors: yes
+  register: pgbouncerrestart
+
+# FIXME: Really need to find the real cause for the pid file disappearing.
+
+- name: Really kill pgbouncer
+  command: pkill pgbouncer
+  when: pgbouncerrestart|failed
+
+- name: Really enable pgbouncer service
+  service: name=pgbouncer state=started enabled=yes
+  when: pgbouncerrestart|failed

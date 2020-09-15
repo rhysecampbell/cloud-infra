@@ -1,0 +1,13 @@
+request:
+{% if letsencryptstaging %}
+  provider: https://acme-staging.api.letsencrypt.org/directory
+{% else %}
+  provider: https://acme-v01.api.letsencrypt.org/directory
+{% endif %}
+  key:
+    type: ecdsa
+    ecdsa-curve: nistp256
+  challenge:
+    http-ports:
+      - 80
+      - 402

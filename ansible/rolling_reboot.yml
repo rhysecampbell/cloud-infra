@@ -1,0 +1,6 @@
+---
+- name: Rolling Reboots
+  hosts: all
+  serial: 1
+  roles:
+    - role: rolling_reboot

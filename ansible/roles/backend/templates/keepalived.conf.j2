@@ -1,0 +1,40 @@
+vrrp_script chk_haproxy {
+    script "killall -0 haproxy"     # cheaper than pidof
+    interval 2                      # check every 2 seconds
+    weight 2                        # add 2 points of prio if OK
+}
+
+vrrp_instance VI_1 {
+
+{% for host in groups['backends'] %}
+{% if hostvars[host].ansible_ssh_host_key_dsa_public == ansible_ssh_host_key_dsa_public %}
+{% for interface in ansible_interfaces %}
+{% if hostvars[host]['ansible_'+interface].ipv4.address.startswith(subnet) %}
+    interface {{ interface }}
+{% endif %}
+{% endfor %}
+{% for addr in hostvars[host].ansible_all_ipv4_addresses if addr.startswith(subnet) %}
+{% if addr != db_float %}
+    vrrp_unicast_bind {{ addr }}
+{% endif %}
+{% endfor %}
+{% else %}
+{% for addr in hostvars[host].ansible_all_ipv4_addresses if addr.startswith(subnet) %}
+{% if addr != db_float %}
+    vrrp_unicast_peer {{ addr }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+    state BACKUP
+    virtual_router_id 50
+    priority 100
+    virtual_ipaddress {
+        {{ db_float }}
+    }
+    track_script {
+        chk_haproxy
+    }
+}
+

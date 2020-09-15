@@ -1,0 +1,28 @@
+---
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+               
+- name: restart iptables
+  service: name=iptables state=restarted
+
+- name: reload nrpe
+  service: name=nrpe state=reloaded
+
+- name: restart pgbouncer
+  service: name=pgbouncer state=restarted
+
+- name: reload pgbouncer
+  service: name=pgbouncer state=reloaded
+
+- name: restart postgres
+  service: name=postgresql-9.3 state=restarted
+
+- name: reload postgres
+  service: name=postgresql-9.3 state=reloaded
+
+- name: reload xinetd
+  service: name=xinetd state=reloaded
+
+- name: restart xinetd
+  service: name=xinetd state=restarted

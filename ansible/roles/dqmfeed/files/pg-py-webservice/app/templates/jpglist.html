@@ -1,0 +1,14 @@
+$def with (data, station)
+<table border="1">
+<tr>
+  <b>
+    <td>Camera Number</td>
+    <td>Date</td>
+  </b>
+</tr>
+$for row in data:
+  <tr>
+    <td>$row.camera_no</td>
+    <td><a href="/export/image.jpg?station=$station&cam=$row.camera_no&latesttime=$row.image_datetime">$row.image_datetime</a></td>
+  </tr>
+</table>

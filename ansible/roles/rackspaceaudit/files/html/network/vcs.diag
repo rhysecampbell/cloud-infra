@@ -1,0 +1,154 @@
+nwdiag {
+  node_width=200;
+  network 192.168.4.0 {
+     address = "192.168.4.0/24"
+
+       nagios.vaicld.com [address = "192.168.4.2"];
+       ldm.vaicld.com [address = "192.168.4.3"];
+       ldm.vaicld.com [color = "#A0A0FF"];
+       www1.vaicld-pre.com [address = "192.168.4.7"];
+       www1.vaicld-pre.com [color = "#F0F010"];
+       tld.vaicld.com [address = "192.168.4.11"];
+       db1.vaicld.com [address = "192.168.4.13"];
+       db1.vaicld.com [color = "#A0B080"];
+       db2.vaicld.com [address = "192.168.4.14"];
+       db2.vaicld.com [color = "#A0B080"];
+       www1.vaicld.com [address = "192.168.4.15"];
+       www1.vaicld.com [color = "#F0F010"];
+       www2.vaicld.com [address = "192.168.4.16"];
+       www2.vaicld.com [color = "#F0F010"];
+  }
+  network 192.168.5.0 {
+     address = "192.168.5.0/24"
+
+       tld.vaicld.com [address = "192.168.5.1"];
+       nagios.vaicld.com [address = "192.168.5.8"];
+  }
+  network 192.168.6.0 {
+     address = "192.168.6.0/24"
+
+       dqm-metar.vaicld-test.com [address = "192.168.6.2"];
+       dqm-metar.vaicld-test.com [color = "#FFA0A0"];
+       TheDuplicator [address = "192.168.6.5"];
+       TheDuplicator2 [address = "192.168.6.6"];
+  }
+  network 192.168.7.0 {
+     address = "192.168.7.0/24"
+
+       nagios.vaicld.com [address = "192.168.7.1"];
+       db2.vaicld-pre.com [address = "192.168.7.5"];
+       db2.vaicld-pre.com [color = "#A0B080"];
+       db1.vaicld-pre.com [address = "192.168.7.6"];
+       db1.vaicld-pre.com [color = "#A0B080"];
+       www1.vaicld-pre.com [address = "192.168.7.7"];
+       www1.vaicld-pre.com [color = "#F0F010"];
+       www2.vaicld-pre.com [address = "192.168.7.8"];
+       www2.vaicld-pre.com [color = "#F0F010"];
+       tld.vaicld.com [address = "192.168.7.9"];
+       TheDuplicator [address = "192.168.7.10"];
+       TheDuplicator2 [address = "192.168.7.12"];
+       ldm.vaicld-pre.com [address = "192.168.7.13"];
+       ldm.vaicld-pre.com [color = "#A0A0FF"];
+  }
+  network 192.168.9.0 {
+     address = "192.168.9.0/24"
+
+       db1.dqm.vaicld-pre.com [address = "192.168.9.1"];
+       db1.dqm.vaicld-pre.com [color = "#FFA0A0"];
+       idb1.dqm.vaicld-pre.com [address = "192.168.9.2"];
+       idb1.dqm.vaicld-pre.com [color = "#FFA0A0"];
+       www1.dqm.vaicld-pre.com [address = "192.168.9.3"];
+       www1.dqm.vaicld-pre.com [color = "#FFA0A0"];
+       proc1.dqm.vaicld-pre.com [address = "192.168.9.4"];
+       proc1.dqm.vaicld-pre.com [color = "#FFA0A0"];
+  }
+  network 192.168.10.0 {
+     address = "192.168.10.0/24"
+
+       POWS-test [address = "192.168.10.1"];
+       db.vaicld-test.com [address = "192.168.10.2"];
+       db.vaicld-test.com [color = "#A0B080"];
+       www.vaicld-test.com [address = "192.168.10.3"];
+       www.vaicld-test.com [color = "#F0F010"];
+       TheDuplicator [address = "192.168.10.4"];
+       tld.vaicld.com [address = "192.168.10.5"];
+       nagios.vaicld.com [address = "192.168.10.6"];
+       ldm.vaicld-test.com [address = "192.168.10.8"];
+       ldm.vaicld-test.com [color = "#A0A0FF"];
+       TheDuplicator2 [address = "192.168.10.9"];
+       jesp-ldm.vaicld-test.com [address = "192.168.10.11"];
+       jesp-ldm.vaicld-test.com [color = "#A0A0FF"];
+  }
+  network 192.168.11.0 {
+     address = "192.168.11.0/24"
+
+       TheDuplicator [address = "192.168.11.1"];
+       TheDuplicator2 [address = "192.168.11.2"];
+       ltg-bb-push [address = "192.168.11.4"];
+       ltg-bb-push [color = "#A0FFA0"];
+       proc1.dqm.vaicld-pre.com [address = "192.168.11.5"];
+       proc1.dqm.vaicld-pre.com [color = "#FFA0A0"];
+       proc1.dqm.vaicld.com [address = "192.168.11.6"];
+       proc1.dqm.vaicld.com [color = "#FFA0A0"];
+       TheDuplicator3 [address = "192.168.11.7"];
+       proc1.dqm.vaicld-test.com [address = "192.168.11.8"];
+       proc1.dqm.vaicld-test.com [color = "#FFA0A0"];
+  }
+  network 192.168.12.0 {
+     address = "192.168.12.0/24"
+
+       ltg-alert-calc [address = "192.168.12.1"];
+       ltg-alert-calc [color = "#A0FFA0"];
+       ltg-distro-01 [address = "192.168.12.2"];
+       ltg-distro-01 [color = "#A0FFA0"];
+       ltg-api-ec [address = "192.168.12.3"];
+       ltg-api-ec [color = "#A0FFA0"];
+       nagios.vaicld.com [address = "192.168.12.4"];
+       ltg-alert-db [address = "192.168.12.5"];
+       ltg-alert-db [color = "#A0FFA0"];
+       ltg-bb-push [address = "192.168.12.6"];
+       ltg-bb-push [color = "#A0FFA0"];
+       ltg-api-ec-test [address = "192.168.12.7"];
+       ltg-api-ec-test [color = "#A0FFA0"];
+  }
+  network 192.168.13.0 {
+     address = "192.168.13.0/24"
+
+       nagios.vaicld.com [address = "192.168.13.1"];
+       Forecast_Processor [address = "192.168.13.2"];
+       www1.dqm.vaicld.com [address = "192.168.13.5"];
+       www1.dqm.vaicld.com [color = "#FFA0A0"];
+       db1.dqm.vaicld.com [address = "192.168.13.6"];
+       db1.dqm.vaicld.com [color = "#FFA0A0"];
+       idb1.dqm.vaicld.com [address = "192.168.13.7"];
+       idb1.dqm.vaicld.com [color = "#FFA0A0"];
+       proc1.dqm.vaicld.com [address = "192.168.13.8"];
+       proc1.dqm.vaicld.com [color = "#FFA0A0"];
+  }
+  network 192.168.14.0 {
+     address = "192.168.14.0/24"
+
+       jesp-ldm.vaicld-test.com [address = "192.168.14.2"];
+       Forecast_Processor [address = "192.168.14.3"];
+  }
+  network 192.168.15.0 {
+     address = "192.168.15.0/24"
+
+       herbalife-vaicld [address = "192.168.15.1"];
+       herbalive-viewLinc-Enterprise-VPN [address = "192.168.15.3"];
+  }
+  network 192.168.16.0 {
+     address = "192.168.16.0/24"
+
+       db1.dqm.vaicld-test.com [address = "192.168.16.1"];
+       db1.dqm.vaicld-test.com [color = "#FFA0A0"];
+       www1.dqm.vaicld-test.com [address = "192.168.16.2"];
+       www1.dqm.vaicld-test.com [color = "#FFA0A0"];
+       proc1.dqm.vaicld-test.com [address = "192.168.16.3"];
+       proc1.dqm.vaicld-test.com [color = "#FFA0A0"];
+       idb1.dqm.vaicld-test.com [address = "192.168.16.4"];
+       idb1.dqm.vaicld-test.com [color = "#FFA0A0"];
+       POWS-test [address = "192.168.16.6"];
+       Forecast_Processor [address = "192.168.16.7"];
+  }
+}

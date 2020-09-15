@@ -1,0 +1,95 @@
+#!/bin/sh
+# Source: http://www.unidata.ucar.edu/software/ldm/ldm-current/basics/configuring.html#boot
+# chkconfig: 123 95 98
+export PATH=/bin:/usr/bin
+
+LDMHOME=/home/ldm
+LDMBIN=$LDMHOME/bin
+LDMADMIN=$LDMBIN/ldmadmin
+PQCHECK=$LDMBIN/pqcheck
+PQCAT=$LDMBIN/pqcat
+PQ=$LDMHOME/data/ldm.pq
+LOG="logger -p local0.err $0:"
+
+case "$1" in
+
+status)
+    su - ldm -c "$LDMADMIN isrunning"
+    ;;
+
+start)
+    $LOG 'Starting LDM system...'
+    if [ -x $LDMADMIN ] ; then
+	if su - ldm -c "$LDMADMIN isrunning"; then
+            $LOG "LDM system is already running."
+	else
+	    if [ ! -f $PQ ] ; then
+		$LOG "Product-queue doesn't exist.  Creating..."
+		if ! su - ldm -c "$LDMADMIN mkqueue"; then
+		    $LOG "Aborting..."
+		    exit 1
+		fi
+	    else
+		#
+		# Test the product-queue for corruption.
+		#
+		if ! $PQCHECK -l /dev/null -q $PQ; then
+		    case $? in
+		    1)  $LOG "System error checking product-queue.  Aborting..."
+			exit 1
+			;;
+		    2)  $LOG "Adding writer-counter to product-queue..."
+			if ! $PQCHECK -F -q $PQ; then
+			    $LOG "Aborting..."
+			    exit 1
+			fi
+			;;
+		    3)  $LOG "Product-queue was incorrectly closed.  " \
+			    "Checking..."
+			if $PQCAT -s -l /dev/null; then
+			    $LOG "Product-queue appears OK. "
+			    $LOG "Clearing writer-counter..."
+			    if ! $PQCHECK -F -q $PQ; then
+				$LOG "Couldn't clear counter.  Aborting..."
+				exit 1
+			    fi
+			else
+			    $LOG "Product-queue appears corrupt.  Deleting."
+			    rm $PQ
+			    if ! su - ldm -c "$LDMADMIN mkqueue -f"; then
+				$LOG "Couldn't make new product-queue.  Aborting..."
+				exit 1
+			    fi
+			fi
+			;;
+		    4)  $LOG "Product-queue is corrupt.  Deleting."
+			rm $PQ
+			if ! su - ldm -c "$LDMADMIN mkqueue -f"; then
+			    $LOG "Couldn't make new product-queue.  Aborting..."
+			    exit 1
+			fi
+			;;
+		    esac
+		fi
+	    fi
+	    su - ldm -c "$LDMADMIN clean"
+	    su - ldm -c "$LDMADMIN start"
+	fi
+    fi
+    ;;
+
+stop)
+    $LOG 'Stopping the LDM system.'
+    if [ -x $LDMADMIN ] ; then
+        su - ldm -c "$LDMADMIN stop"
+    fi
+    ;;
+
+restart)
+    $LOG 'Restarting the LDM system.'
+    if [ -x $LDMADMIN ] ; then
+        su - ldm -c "$LDMADMIN restart"
+    fi
+    ;;
+
+esac

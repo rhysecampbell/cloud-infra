@@ -1,0 +1,16 @@
+$def with (list, userform,)
+<table border="1">
+<tr><td><b>Username:</b></td>
+</tr>
+$for row in list
+  <tr>
+    <td><a href="./roles?username=$row['username']">$row['username']</a></td>
+  <tr>
+</table>
+
+<h2>Add or delete Users:</h2>
+<form name="main" method="post">
+$if not userform.valid: <p class="error">Try again, AmeriCAN:</p> 
+$:userform.render()
+<input type="submit" />
+</form>

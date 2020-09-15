@@ -1,0 +1,24 @@
+[database]
+dbn = postgres
+db = qualmon2
+port = 5432
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+host = {{ ip }}
+{% endfor %}
+user = postgres
+password = {{ postgres_password }}
+
+[imagedatabase]
+dbn = postgres
+db = imagedb
+{% for ip in hostvars[groups['dqmimagedb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+host = {{ ip }}
+{% endfor %}
+port = 5432
+user = postgres
+password = {{ postgres_password }}
+
+[main]
+debug = {{ webpy_debug | default("False") }}
+debug_sql = {{ webpy_debug | default("False") }}
+dbprinting = {{ webpy_debug | default("False") }}

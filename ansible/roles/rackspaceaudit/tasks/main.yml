@@ -1,0 +1,60 @@
+---
+- name: create the rackmon user
+  user: name=rackmon comment="RackSpace Scan User" generate_ssh_key=yes
+
+- name: create scripts directory
+  file: path=/home/rackmon/scripts state=directory owner=rackmon
+
+- name: install buildNWpng.sh
+  copy: src=buildNWpng.sh
+        dest=/home/rackmon/scripts/buildNWpng.sh
+        mode=0755
+        owner=rackmon
+
+- name: install rackSpaceCheck-dataFile.pl
+  template: src=rackSpaceCheck-dataFile.pl.j2 dest=/home/rackmon/scripts/rackSpaceCheck-dataFile.pl mode=0755 owner=rackmon
+
+- name: install required packages
+  yum: pkg={{item}} state=installed
+  with_items:
+    - perl
+    - httpd
+    - python-devel
+    - python-reportlab
+    - python-imaging
+    - python-setuptools
+    - libjpeg-devel
+    - zlib-devel
+    - gcc
+    - nmap
+    - epel-release
+    - perl-libwww-perl
+    - perl-JSON
+    - perl-Crypt-SSLeay
+    - perl-Net-SSH
+    - perl-File-Touch
+
+- easy_install: name=nwdiag
+
+- name: install the web pages
+  copy: src=html/
+        dest=/var/www/html/securityReports
+        mode=0644
+        owner=rackmon
+
+- name: Install cgi-bin
+  copy: src=cgi-bin/rackSpaceStatsNetwork.cgi
+        dest=/var/www/cgi-bin/
+        mode=0755
+
+- name: Install httpd configuration
+  copy: src=httpd.conf dest=/etc/httpd/conf.d/rackmon.conf
+  notify: reload httpd
+
+- service: name=httpd state=started
+
+- name: ssh options
+  copy: src=ssh.config dest=~rackmon/.ssh/config mode=0644 owner=rackmon group=rackmon
+
+- name: cron rackmon jobs
+  cron: name="rackmon jobs" special_time=daily user=rackmon job="~/scripts/rackSpaceCheck-dataFile.pl" cron_file=ansible_rackmon-audit

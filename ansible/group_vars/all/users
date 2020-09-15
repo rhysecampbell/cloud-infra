@@ -1,0 +1,34 @@
+users:
+    jpc:
+      'crypted_password': '$6$QMk188abi508kW$M4fGZS4gro.0vZKdTaTWPTRUHJgQsXcC5eTXQbPkOdL8fABtJxrQdEk5OS9LDDUXfcT0nT6JsbHH3q1EWkhGZ/'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAn0iBvayl1aTfyl1PGyXR50DMTlNsSazDYUHFMZM/z81N5WpEUvzhytje1qMzPRiSfj7a2ThE2Oh1hlj07rZstKIJ1OH4hM+jUoId8lTIlzoO6XVSXwEVU+gvGqKJo58hNcOhq75p/PPi5uSgte+WWa+7b6UJCVXnvV2hfDtRee3BwIaobs/pBSfAXfiRVopC4c1Mb8pYgogqAzrqFD+7LY02NN9JpSbHVfySPv9xESoDYnqmtjZPfHtYW19s5HyaVogKf7w9hZoiNV5ZCy9RcFyoynT0N7bo/WA3svz/Jl/IlJ6aVYOaHR8xxFL2HgHXNiPWJLXRPqrru5txk0ZRww== jpc@BIR-5C3PWW1'
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCSMo+Wt5rK/4tXobbmBt6OFspAaCGFlGvD6qxdSJ4boFZ8Y2uHKYfCOmtgkc9cmht5l3GUs8aSy+OdMNlj2ngZ/tUP2NNJjItVxRCTDDcudJTHnzwXJ7HqNpBl/T+6Eq00kqKB/tdheRXBZJcGsmktZf0TzMarPx1JV9mXAjcMGhgKujdgSMT9TUb4EDp5/tWZ+8z6Q1AJf4/+/fDYONtyyuAnC68ooNylyiDmlkTY+cI2xLrreslzyGiWkntS+IjBpXxN321yQe24doOVcFKBiyfHfr1yLQ5tISRdHMkpMXopYGB8BXQkXa45n2ccptYfH/LGaB0pte13QFwEH6bn jpc@BIR-PF0GPH28'
+    jesp:
+      'crypted_password': '$6$twlXcDbOMOje2$6C8/RKDZCiWKQ32R8gtPoDXM7DIMcSD7lnakbKChkoFnikmJIMDkiSz8bCc4zwzkTNeL6xtIn0eK1TpWI9lAW0'
+      'ssh_keys':
+         - 'ssh-dss AAAAB3NzaC1kc3MAAACBAMfTJ1omS14MUG7Eqr+HT+Qo0rtIDyT234nu1lLKzmwYlGP5d4Js2WJhTEUKQMa8g3x0BAtNFn18ZsoijLGPyj+a1Oi8xd9vH3nwjMGyks3/2PUlZGVbwPXV8XwyuvqU8HH+OKDhEh5PaofwZuPfr/eBYXnthjghAZJbbfzOtoy3AAAAFQCPvm+IXV6AhTJXXMXeEQoN0nk4eQAAAIBY7baKSO12LukuY9Nivvpndqi3fbHtZjtWFjGV5xNyPHmaZkdbD0acnB38oz9gJ7m+foIvqGirFtsqUQbcTaCs8N8ZEqTgnRQvSk5XKBWAAPchCA0d+pB6HDEdDvWvrEQUsTNk0H6gdm4RbE396S4fDaoMSyI7vVp8sipt48qCcQAAAIBVlxfEa8haISDpptU1uItcj+YlYmwOrUqc3O+ahSHgSNsqgei/eFQybKxX/8MAU/EOmeE5BrMr7Z0lC05upllcJFBUWgTlVDUYzYfKaFGUtW/GToLKowVa/yc2j4GUKqkQfeJ3PdjoVz1Rzg9UMX1qn5gPmQuhVDArqbs9orI0ag== jesp@flatbox.vaisala.com'
+    bl:
+      'crypted_password': '$6$rounds=40000$awxn5xwnKUkHr0Wg$u/hQwDhq6WIRfeCeIGO7ysdGoc4TMDSp2oGvjDYujMPyUkQAW.HHRZSMHONfnl8tyUJb5zX6OVd1Kot0SWqqq0'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAxbAFuwnA1vZSHFoPHJMe9/Qp/eMpdif//w3+n3Oz3qcyzncOiO+eWOfuFxZgEhwwISPqNAE7E5gmD47MmGpT3G584oBBDdwWpw0I5TTIJhUjXGSVfK8KNb4kWgUqcYVhEaKhcNCpWLMAgkpC9QOQOekfH9JKx1NOG8My5wVDPx0HfsXS9ayoT+OwrdTVmREpinR1KdrfO5wpOBJRnFkuzXa584TdqypQM+2ngyfEqDG5iwcQ4xU/S5OoEhnJWh0xjEJuAGkN0Cm/LEW/AmjeM1mF7hQnidlP2DOPuTMGG2OHDWrAjEmcIlBZTceaWBGo6N0lSez20gEl76qhHUf/3Q=='
+    hwo:
+      'crypted_password': '$6$qdoewyWAHfd.hh1y$lA6WLCsfq0PioNzXitKxmPYvtP7WvaIiASle2RfUKo2b4kWJvwlXaNztF4AhkJM7m11r5yAh.chtl9M0SyANy0'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAw8n+1Tjy3wY2h6IYYPvZZIc1Jc0hCPR0ECGhIx5avF0IrOeb14U8BfxWYurChEprqqkWFnV3KGTB3sKHpNLKEwsMR+LW4WGJwf03t+OcihvwRoPVHgAxMCQNxVUqVUTr3JIk3Iy7Z7yr3kwT7XFIdM+/LB19SWKMg/txH+EHr8Y+NwY1JNRYvK5sl7L438JSaEJJ33drxsej0ML3dOHjlTRe5zV17pz4NfaPpKG66SlzQBrWj9Gtsx/98cPXqz9iDGIj87atwGRFP32s6gD8G/O7Hp3NJ7ZnKPNbrSzilBlXhE6b0mQ/fpbo8KhBtPfQalt1Hyeivi0JtBeUqXOUTw== hwo@bir-d9vpww1'
+    rwg:
+      'crypted_password': '$6$qOPQia9hb$PymI7g6mZjTcq7h4GVggYWCsj6DU3qe5Jcyu.DaqmAeGVSB9i7xKKoSl6hCaSk6LZsoCp7vr1Y1G3t6yxrpjd1'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuXBpR4++J3PWhxkKv2NmzQRu+1YI0ChdjiDlLlN0sWDmYJDqK2gOSLzWt534L8B6muvu1NSML5MbsFX2D7VzABlv+gCrOC/gaB3DdzMzWZYGZxSj5eQgi6csNtEO/cvpckTuCbcFTJ3FJlm+yYzuS7LGyLZgrSs7rzsKp8dgUMsOU6C4UD72pgeBx6e86mUL0txp23fg4H8uL41TsQ1kCsoB2nbqRbVrgGwyMv/lyRGLVEzuJlSAilMavR82G6PWqnQ3ix6qJGbvS8dyov6ns9qUGE322fK2YGX2H6aFJ7t+Uwb56SR+qFf88lDbBUTuSWP7LI5E+WZdyM2g1rZCt richard@mintrg'
+    tg:
+      'crypted_password': '$6$PDmhQwBtDPg.dEfR$vVlJ1lH8snJUkIdMr65sSQsb0qBeodKV7roSs5Ss89A0YiURsF5xNbW1hrfwWOhZ3FLE7Mtgif7J6Xdy/5tJ8.'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC5MfMhgo9XE7zTqzQKadGDhZHeJxJUphQuSCqsXyMZgHLKHE+C4O5TItDJ0FiSUJoyElqAWzWtuQEVm3Z+z9XKf2g+NxWGaMqcTA++s4WjH8PXqv/67udjKw0mUh+DoQuVUKGqhWDGQIOuFP0QmJ1U96+Sgh9hORUkfWT8LhdQeGTGp8dM8ogBtHG0ck8acFaF9x4hl0VNlgcYwN6fGiRPi4eS9iaD/mIAm4Dk/14Cd5598uN7TH9Fk4MBEhHmZ3/Ns7Cyb5pKf37q57NkEpLBtG8184SI1HA7cb8gC9eBE2SSN//qH58YNiTRz/flpKg1nGIRF/dE2hw7xuEN02wd tg@BOU-CYLRZW1'
+    jnb:
+      'crypted_password': '$6$HWhJm7xlMtHRwzjD$PU9tttI.GHwV9JBjIEiAhKQyc1NK5SI1sPuJPxZo8afGQ6roIWcVBZ66hCYhoSFrQhNp0nODfuIqCnblUO9SV1'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAi2FVVNS62MpY4Oid2ctlooXZQehw7ierBDHaRukOjElRZ8HqeQZdqr5qQ+ndg5tzQd2nMU8th3mSuvyJTNvwxXfXr0JbjEWt/w8w3fPrANf8Jm5HkPdQdBPIcJVEJWJ5iYAoqoJUafv7s0qzKABfjiH+8YngW6FufeOSEYzF6vIchT0R1qfDTpbzo9TrrTareTNrDYnUzhWKskqwYC0Joqt7OkQrNjwN23kxAda2vqAxHbBFte8y5p4ttCodRig5UkuutkR2okdBljtp80PJnLxbe9S9FzSTnKeFg0ScODSgTnZL6YKqZJJtJbEoQlzhCLiPJAMnnFhsVZBvLv8sfw=='
+    jcr:
+      'crypted_password': '$6$b9IopBHh0D$mlkQVCGsyoFoi3IopVdMP8UmsdEi5TInKD7IGVafINfZwXm1r66bzjZ2Q3s5j/PNX2MObdgSB1KiWpXFuGcqy/'
+      'ssh_keys':
+        - 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDDMcHCZ4PcdMtFkJ+yFBiqNDvNukuRQbIJWC1T8KpvqHdu5YXl3X9iJ6Jm/JUwy64lUw7cPpP/Ag5/p3jQjFIuK+KVw62Ai1GdDc8KW40zhlqStGzdKnJo7mDEd06gLuWylI6mPr0wLN2F7Kza79rHuIZCg1iLD/5I59gurG24HsW1e6frujg/7LeCKcsWAIAqbIDoTwxQYdD5KTc97RUOV/saSVs16MA2hKIPSWdo6e5+cxgZVzhwgo8+xr9Wa2uplSvicCeC2932CWV4MhYX5E9B/qEHi/VM53MHM3b1feYJpKbx9WPSacWwTgxqu637O/n6vg7Nh1Bs90nIU9JAg6A5U5jXJwqiUESU/JHLMN74GpnogF3YEehXZ9oMR0MGx4QA8dekNLdB78tPTwQ1Y9eTs62lu7Lu3mRxtMRATvUTL+RJ7I0QCvbP7ImSLWknCEc+oqhGmTQMjgV27Ua3Rh0y/5HMQUF8GbqkHjXtSlgAIx0DiArc0BdtPIJ5uM= jeramey.crawford@vaisala.com'

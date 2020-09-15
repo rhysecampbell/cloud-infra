@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+
+<link rel="stylesheet" href="css/style.css" type="text/css" />
+<link rel="stylesheet" href="css/gxt-all.css" type="text/css" />
+<link rel="Stylesheet" type="text/css" href="css/cloudDB.css">
+
+
+<title>Active Alerts</title>
+<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script src='https://api.tiles.mapbox.com/mapbox.js/v2.0.1/mapbox.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox.js/v2.0.1/mapbox.css' rel='stylesheet' />
+<style>
+  body { margin:0; padding:0; }
+  #map-1, #map-2 { position:relative; top:0; bottom:0; width:100%; }
+</style>
+</head>
+<body>
+
+<div id="banner">
+<a class="link-vaisala-logo" href="http://www.vaisala.com/" title="Visit Vaisala" tabindex="1" accesskey="h">Vaisala</a>
+<p><font size=-1><b>/ Current Alert Areas</b></font></p>
+<br>
+</div>
+
+<br>
+
+
+<div id='map' style="height:600px;width:800px;"></div>
+
+
+<script>
+
+
+L.mapbox.accessToken = 'pk.eyJ1Ijoiam9zZXBoODU3NTAiLCJhIjoiaDlXaVFsZyJ9.ROcFPxvksJt5FBaKCxmfOg';
+var map = L.mapbox.map('map', 'joseph85750.j7ic6dj8')
+.setView([42, -100], 4);
+
+
+var alert_colours = {"FAA": ["2e8b57", "Areal Flood Watch"], "BZA": ["2f7b67", "Blizzard Watch"], "CFA": ["4f2b17", "Coastal Flood Watch"], "EHA": ["6e1ba7", "Excessive Heat Watch"], "ECA": ["bf400b", "Extreme Cold Watch"], "FWA": ["ffdead", "Fire Weather Watch"], "FFA": ["2e8b57", "Flash Flood Watch"], "FZA": ["488d8b", "Freeze Watch "], "GLA": ["ffc0cb", "Gale Watch"], "HZA": ["808b8b", "Hard Freeze Watch"], "SEA": ["4683d2", "Hazardous Seas Watch"], "UPA": ["1fe4b5", "Heavy Freezing Spray Watch "], "HWA": ["b8860b", "High Wind Watch"], "HFA": ["984d3b", "Hurricane Force Wind Watch"], "HUA": ["7f502b", "Hurricane Watch"], "HIA": ["af1493", "Hurricane Wind Watch "], "LEA": ["da7520", "Lake Effect Snow Watch "], "LSA": ["9f29a4", "Lakeshore Flood Watch "], "SVA": ["7e8b57", "Severe Thunderstorm Watch "], "SRA": ["ffe4b5", "Storm Watch"], "TOA": ["7e3b47", "Tornado Watch "], "TRA": ["afdead", "Tropical Storm Watch"], "TIA": ["3a55d3", "Tropical Storm Wind Watch "], "TSA": ["703090", "Tsunami Watch "], "TYA": ["12b44c", "Typhoon Watch"], "WCA": ["788898", "Wind Chill Watch"], "WSA": ["4f74a5", "Winter Storm Watch"], "AFW": ["4f502b", "Ashfall Warning "], "BZW": ["daa580", "Blizzard Warning"], "CFW": ["af3483", "Coastal Flood Warning "], "DSW": ["7b689e", "Dust Storm Warning"], "EHW": ["ff34a1", "Excessive Heat Warning "], "ECW": ["ea2255", "Extreme Cold Warning "], "FZW": ["483d8b", "Freeze Warning"], "GLW": ["743215", "Gale Warning"], "HZW": ["362436", "Hard Freeze Warning"], "SEW": ["902100", "Hazardous Seas Warning"], "UPW": ["211255", "Heavy Freezing Spray Warning"], "SUW": ["515042", "High Surf Warning"], "HWW": ["daa520", "High Wind Warning"], "HFW": ["550022", "Hurricane Force Wind Warning"], "HUW": ["555555", "Hurricane Warning "], "HIW": ["55aa55", "Hurricane Wind Warning "], "ISW": ["8b008b", "Ice Storm Warning"], "LEW": ["008b8b", "Lake Effect Snow Warning "], "LSW": ["aed35a", "Lakeshore Flood Warning "], "FWW": ["ff1493", "Red Flag Warning"], "SRW": ["88efba", "Storm Warning"], "TRW": ["9922aa", "Tropical Storm Warning "], "TIW": ["bcda33", "Tropical Storm Wind Warning "], "TSW": ["eae099", "Tsunami Warning"], "TYW": ["bca593", "Typhoon Warning"], "WCW": ["4433aa", "Wind Chill Warning "], "WSW": ["ff69b4", "Winter Storm Warning"], "ASY": ["77eadf", "Air Stagnation Advisory "], "AFY": ["5401ae", "Ashfall Advisory "], "MHY": ["5401ae", "Ashfall Advisory"], "DUY": ["449977", "Blowing Dust"], "BWY": ["3377ee", "Brisk Wind Advisory"], "CFY": ["3871ea", "Coastal Flood Advisory "], "FGY": ["708090", "Dense Fog Advisory"], "MFY": ["708090", "Dense Fog Advisory"], "SMY": ["9844bb", "Dense Smoke Advisory "], "MSY": ["9844bb", "Dense Smoke Advisory "], "ZFY": ["3366aa", "Freezing Fog Advisory "], "ZRY": ["da70d6", "Freezing Rain Advisory "], "ZYY": ["5566aa", "Freezing Spray Advisory "], "FRY": ["4433bb", "Frost Advisory "], "HTY": ["993311", "Heat Advisory"], "SUY": ["ba55d3", "High Surf Advisory"], "LEY": ["48d1cc", "Lake Effect Snow Advisory "], "LWY": ["d2b48c", "Lake Wind Advisory"], "LSY": ["efbeaa", "Lakeshore Flood Advisory "], "LOY": ["a52a2a", "Low Water Advisory "], "SCY": ["d8bfd8", "Small Craft Advisory "], "SWY": ["d8bfd8", "Small Craft Advisory for Hazardous Seas "], "RBY": ["d8bfd8", "Small Craft Advisory for Rough Bar "], "SIY": ["d8bfd8", "Small Craft Advisory for Winds "], "TSY": ["95eabb", "Tsunami Advisory"], "WIY": ["d2b48c", "Wind Advisory "], "WCY": ["8032aa", "Wind Chill Advisory"], "WWY": ["7b68ee", "Winter Weather Advisory "], "FLW": ["9400d3", "River Flood Warning"], "RPA": ["40e0d0", "Rip Current Statement"], "MAW": ["ffa500", "Special Marine Warning"], "CFS": ["6b8e23", "Coastal Flood Statement"], "FLA": ["704090", "River Flood Watch"], "HTA": ["902030", "Excessive Heat Watch"], "SVW": ["aa1133", "Severe Thunderstorm Warning"], "TOW": ["bb2244", "Tornado Warning"], "FFW": ["cc3311", "Flash Flood Warning"], "FAW": ["991100", "Flood Warning (Areal / County)"], "HTW": ["aa5566", "Excessive Heat Warning"], "FAY": ["337799", "Flood Advisory"], "WSY": ["2244aa", "Winter Weather Advisory"], "HWY": ["339922", "Wind Advisory"], "HWO": ["802020", "Hazardous Weather Outlook"], "SPS": ["114488", "Special Weather Statement"], "HCW": ["22aa22", "Hurricane Watch / Warning"], "TWW": ["7e3b47", "Tornado Watch"], "BSY": ["3377ee", "Blowing Snow Advisory"], "EWW": ["d2b48c", "Extreme Wind Warning"], "FFW": ["88efba", "Flash Flood Statement"], "FLY": ["704090", "Flood Advisory (for forecast points)"], "HSW": ["2030A0", "Heavy Snow Warning"], "HYS": ["eae099", "Hydrologic Statement (for non-flood points)"], "IPW": ["3377ee", "Sleet Warning"], "IPY": ["4488ee", "Sleet Advisory"], "LBY": ["48d1cc", "Lake Effect Snow and Blowing Snow Advisory"], "LSS": ["efbeaa", "Lakeshore Flood Statement"], "MAF": ["ffa500", "Routine Marine (no hazards in effect)"], "MAS": ["704090", "Marine Weather Statement (non follow-up)"], "SBY": ["102090", "Snow and Blowing Snow Advisory"], "SNY": ["5566aa", "Snow Advisory"], "UPY": ["5566aa", "Freezing Spray Advisory"] }; 
+
+var params = {};
+
+if (location.search) {
+    var parts = location.search.substring(1).split('&');
+
+    for (var i = 0; i < parts.length; i++) {
+        var nv = parts[i].split('=');
+        if (!nv[0]) continue;
+        params[nv[0]] = nv[1] || true;
+    }
+}
+
+if ((! params.state) && (! params.lat || ! params.lon) && (! params.left || ! params.right || ! params.top || ! params.bottom)) {
+    params['left'] = '-180';
+    params['right'] = '180';
+    params['top'] = '90';
+    params['bottom'] = '-90';
+}
+
+if (! params.simplify) {
+    params['simplify'] = '0.1';
+}
+
+newquery = [];
+for (var param in params) {
+    newquery.push(encodeURIComponent(param) + "=" + encodeURIComponent(params[param]));
+}
+
+var alertsurl = '/api/v1/wwa/alerts?' + newquery.join("&");
+
+$.getJSON(alertsurl, function(i) {
+    $.each(i, function(index) {
+        var geojson = i[index];
+        var alert_colour = '#' + alert_colours[geojson.alertCategory][0];
+        if (alert_colour.length < 5) {
+            if (geojson.alert.indexOf("...STORM WARNING") > -1) {
+                alert_colour = '#9400d3';
+            } else if (geojson.alert.indexOf("...GALE WARNING") > -1) {
+                alert_colour = '#dda0dd';
+            } else if (geojson.alert.indexOf("...HEAVY FREEZING SPRAY WARNING") > -1) {
+                alert_colour = '#00bfff';
+            } else if (geojson.alert.indexOf("...AIR QUALITY ALERT") > -1) {
+                alert_colour = '#808080';
+            } else if (geojson.alert.indexOf("SPECIAL WEATHER STATEMENT") > -1) {
+                alert_colour = '#ffe4b5';
+            } else if (geojson.alert.indexOf("HYDROLOGIC OUTLOOK") > -1) {
+                alert_colour = '#90ee90';
+            } else {
+                alert_colour = '#ffe4b5';
+            };
+        };
+        var polyColor = L.mapbox.featureLayer(geojson).addTo(map);
+        polyColor.setStyle({
+          fillColor: alert_colour,
+          weight: 1,
+          opacity: 0.9,
+          color: '#03F',
+          fillOpacity: 1
+      }).bindPopup(i[index].alert, {maxWidth: 500, minWidth: 250, maxHeight: 160, autoPan: true, closeButton: true, autoPanPadding: [5, 5]}).addTo(map);
+    });
+});
+
+</script>
+<hr>
+<br>
+<br>
+</body>
+</html>

@@ -1,0 +1,8 @@
+[pfws-demo]
+pfws-demo.vaicld-dev.com ansible_ssh_host=104.130.72.102 dqmforecastdb_local=True
+
+[dqmforecastdb]
+pfws-demo.vaicld-dev.com
+
+[dqmweb]
+pfws-demo.vaicld-dev.com

@@ -1,0 +1,18 @@
+---
+- name: check scripts
+  template: src={{ item }}.j2 dest=/opt/{{ item }} mode=755
+  with_items:
+    - check-latest-data.py
+    - check-alerts.py
+
+- name: database nrpe commands
+  copy: src=nrpe-{{ item }}.cfg dest=/etc/nrpe.d/{{ item }}.cfg
+  notify: reload nrpe
+  with_items:
+    - database
+    - check_latest_data
+    - check_replication
+    - check_postgresql
+
+- name: check-replication.py
+  template: src=check-replication.py.j2 dest=/opt/check-replication.py mode=755

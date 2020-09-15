@@ -1,0 +1,321 @@
+[% INCLUDE header.html %]
+<script id="source" language="javascript" type="text/javascript">
+$(document).ready(function() {
+	window.configInt = {};
+	window.configInt.cache = {
+		inputForm:$("#inputForm"),
+		userTable:$("#userTable"),
+		
+		autoUserInput:$('.autoUser'),
+		
+		addUsername:$('#addUsername'),
+			addUsernameInfo:$('#addUsernameInfo'),
+		addRoleDiv:$('#addRoleDiv'),
+		addPassword:$('#addPassword'),
+			addPasswordInfo:$('#addPasswordInfo'),
+		addedBy:$('#addedBy'),
+			addedByInfo:$('#addedByInfo'),
+		addDescription:$('#addDescription'),
+			addDescriptionInfo:$('#addDescriptionInfo'),
+		addSubmit:$('#addSubmit'),
+			addMessage:$('#addMessage'),
+		
+		modifyUsername:$('#modifyUsername'),
+			modifyUsernameInfo:$('#modifyUsernameInfo'),
+		modifyUserRoleDiv:$('#modifyUserRoleDiv'),
+		modifySubmit:$('#modifySubmit'),
+			modifyMessage:$('#modifyMessage'),
+		
+		changeUsername:$('#changeUsername'),
+			changeUsernameInfo:$('#changeUsernameInfo'),
+		changePassword:$('#changePassword'),
+			changePasswordInfo:$('#changePasswordInfo'),
+		passwordSubmit:$('#passwordSubmit'),
+			passwordMessage:$('#passwordMessage'),
+		
+		deleteUser:$('#deleteUser'),
+			deleteUserInfo:$('#deleteUserInfo'),
+		deleteSubmit:$('#deleteSubmit'),
+			deleteMessage:$('#deleteMessage'),
+	};
+	window.configInt.settings = {	
+		baseURL:'/rest/v1.0',
+	};
+	
+	configInt.cache.addSubmit.click(function() {
+		// This is only a front end check, the backend does not have these limits
+		if(	   inputValidation('addUsername','typeLength',['username',3,20])
+			&& inputValidation('addPassword','length',[6,100]) // JPC doesn't want char limits. Since it is hashed I guess that is okay // JOSP and YJO want 6 chars min
+			&& inputValidation('addedBy','length',[3,5])
+			&& inputValidation('addDescription','length',[4,30])
+		) {
+			userAdd();
+		}
+	});
+
+	configInt.cache.modifySubmit.click(function() {
+		if(inputValidation('modifyUsername','notBlank')) {
+			userModifyRole();
+		}
+	});
+
+	configInt.cache.passwordSubmit.click(function() {
+		if(    inputValidation('changeUsername','notBlank')
+			&& inputValidation('changePassword','length',[6,100])
+		) {
+			userSetPassword();
+		}
+	});
+
+	configInt.cache.deleteSubmit.click(function() {
+		if(inputValidation('deleteUser','notBlank')) {
+			userDelete();
+		}
+	});
+
+	drawPage(); // fill in the select boxes and tables
+});
+
+function drawPage() {
+	resetPage();
+	
+	fillSelectRoles(configInt.cache.addRoleDiv,'addRole');
+	
+	
+	setCombobox(configInt.cache.autoUserInput,'userListSimple');
+	
+	var callback = function (event, ui) {
+		console.log(ui);
+		
+		fillSelectRoles(configInt.cache.modifyUserRoleDiv,'modifyRole',configInt.cache.modifyUsername.combobox('value'));
+	};
+	var options = {};
+	options['select'] = callback;
+	setCombobox(configInt.cache.modifyUsername,'userListSimple',options);
+
+	pagerTable('userList');
+	  
+	return;
+}
+function resetPage() {
+	configInt.cache.modifyUserRoleDiv.children().remove();
+	configInt.cache.addRoleDiv.children().remove();
+	
+	configInt.cache.inputForm.trigger("reset");
+
+	configInt.cache.addSubmit.prop("disabled", false);
+	configInt.cache.modifySubmit.prop("disabled", false);
+	configInt.cache.passwordSubmit.prop("disabled", false);
+	configInt.cache.deleteSubmit.prop("disabled", false);
+}
+</script>
+
+
+<div id="mainPage">
+	<noscript>
+		<div class="commonErrorMessages">
+			<p>You must enable JavaScript to use this application.</p>
+		</div>
+	</noscript>
+
+<form id="inputForm" onsubmit="return false">
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Add User</h1>
+		</div>
+		<div id="release-version">
+			<div id="release-version-text">Version</div>
+			<div id="release-version-number">[% version %]</div>
+		</div>
+		<div class="plotBody">
+			<table>
+			<tr valign="top">
+				<td>Username:</td>
+				<td><input id="addUsername" type="text" name="username" /></td>
+				<td colspan="2"><div id="addRoleDiv"></div></td>
+				<td></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addUsernameInfo"></div></td>
+					<td></td>
+					<td></td>
+				</tr>
+			<tr>
+				<td>Password:</td>
+				<td><input id="addPassword" type="password" name="password" /></td>
+				<td></td>
+				<td></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addPasswordInfo"></div></td>
+					<td></td>
+					<td></td>
+				</tr>
+			<tr>
+				<td>Added By:</td>
+				<td><input id="addedBy" type="text" name="addedBy" /></td>
+				<td>Comment:</td>
+				<td><input id="addDescription" type="text" name="description" size="40" /></td>
+			</tr>
+				<tr>
+					<td></td>
+					<td><div id="addedByInfo"></div></td>
+					<td></td>
+					<td><div id="addDescriptionInfo"></div></td>
+				</tr>
+			<tr>
+				<td colspan="4"><input id="addSubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td colspan="4">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="4"><div id="addMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Modify User's Virtual Regions</h1>
+		</div>
+		<div class="plotBody">
+			<table>
+			<tr valign="top">
+				<td>
+					Username: <select id="modifyUsername" name="username"></select>
+					<div id="modifyUsernameInfo"></div>
+				</td>
+				<td><div id="modifyUserRoleDiv"></div></td>
+			</tr>
+			<tr>
+				<td colspan="2"><input id="modifySubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="2"><div id="modifyMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+
+			
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Change Password</h1>
+		</div>
+		<div class="plotBody">
+			<table>
+			<tr>
+				<td>
+					Username: <select id="changeUsername" name="username" class="autoUser"></select>
+					<div id="changeUsernameInfo"></div>
+				</td>
+				<td>
+					Password: <input id="changePassword" type="password" name="password" />
+					<div id="changePasswordInfo"></div>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2"><input id="passwordSubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="2"><div id="passwordMessage" class="actionMessage"></div></td>
+			</tr>
+			<tr>
+		</table>
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Delete User</h1>
+		</div>
+		<div class="plotBody">
+			<table>
+			<tr>
+				<td>
+					Username: <select id="deleteUser" name="role" class="autoUser"></select>
+					<div id="deleteUserInfo"></div>
+				</td>
+			</tr>
+			<tr>
+				<td><input id="deleteSubmit" type="submit" value="Submit" /></td>
+			</tr>
+			<tr>
+				<td colspan="2">&nbsp;</td>
+			</tr>
+			<tr>
+				<td><div id="deleteMessage" class="actionMessage"></div></td>
+			</tr>
+			</table>
+		</div>
+	</div>
+</form>
+</div>
+
+
+
+<br />
+<div id="resultsTable">
+	<table class="tablesorter">
+		<thead>
+			<tr>
+				<td class="pager sorter-false" colspan="5">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+			<tr>
+				<td class="pager" colspan="5">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+		</tfoot>
+		<tbody>
+		</tbody>
+	</table>
+</div>
+[% INCLUDE footer.html %]

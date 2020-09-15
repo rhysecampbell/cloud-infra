@@ -1,0 +1,43 @@
+Cron entries:
+# cleanup surface METAR/XML parsing directories
+42 * * * * /bin/find /home/ldm/var/data/surface/work/log/*.log -mmin +1440 -exec rm {} \; > /dev/null 2>&1
+42 * * * * /bin/find /home/ldm/var/data/surface/work/log/*.err -mmin +1440 -exec rm {} \; > /dev/null 2>&1
+22 * * * * /bin/find /home/ldm/var/data/surface/work/upload-archive -mmin +1440 -exec rm -rf {} \; > /dev/null 2>&1
+
+#get rid of old counts
+5 5 * * * /bin/find /var/www/html/counts/results/??/????/ -mtime +7 -exec rm -rf {} \; > /dev/null 2>&1
+
+# keep the xml parser running
+* * * * * /home/ldm/var/data/surface/work/keepAlive.ksh >> /tmp/keepAlive.log 2>>/tmp/keepAlive.err
+
+# start LDM on boot
+@reboot /home/ldm/bin/ldmadmin clean && /home/ldm/bin/ldmadmin start > /home/ldm/var/logs/startup.log 2>&1
+
+
+
+Files/scripts:
+
+/home/ldm/var/data/surface/work/keepAlive.ksh
+/home/ldm/var/data/surface/work/parseLoop.sh
+/home/ldm/var/data/surface/work/parseAll.pl
+/home/ldm/var/data/surface/work/python/collectivebuster.py
+/home/ldm/var/data/surface/work/fileSlicer.ksh
+/home/ldm/var/data/surface/work/metar2xml.pl
+/home/ldm/var/data/surface/work/counter.pl
+
+
+Configs:
+
+/home/ldm/var/data/surface/work/metarPaths.txt
+/home/ldm/var/data/surface/work/ish.dat
+/home/ldm/var/data/surface/work/python/collectivebuster.ini
+/home/ldm/var/data/surface/work/python/headerfile.txt
+/home/ldm/var/data/surface/work/python/filewriterclass.py
+/home/ldm/var/data/surface/work/python/filewriterclass.pyc
+
+
+/home/ldm/etc/ldmd.conf
+/home/ldm/etc/pqact.conf
+
+/etc/vaisala-config/do-sendcc/metar-prod.conf
+/etc/vaisala-config/do-sendcc/metar-test.conf

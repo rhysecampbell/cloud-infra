@@ -1,0 +1,98 @@
+---
+- name: schema directory
+  file: path=/opt/schemas owner=postgres state=directory
+
+- name: initdb
+  command: service postgresql-9.3 initdb
+  args:
+    creates: /var/lib/pgsql/9.3/data/base
+    warn: False
+
+- name: install postgresql configuration files
+  template: src={{ item }}.j2 dest=/var/lib/pgsql/9.3/data/{{ item }} owner=postgres group=postgres mode=600
+  notify: restart postgres
+  with_items:
+    - postgresql.conf
+    - pg_hba.conf
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started
+
+- name: set postgres password
+  command: psql -w -U postgres -d postgres -c "alter user postgres with password '{{ postgres_password }}';"
+  changed_when: False
+  become_user: postgres
+
+- name: create cloud user
+  postgresql_user: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+      - cloud
+
+- name: createdb
+  postgresql_db: name={{ item }} owner=cloud state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+    - forecast
+
+- name: copy schemas
+  copy: src=schemas/{{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items:
+    - forecast
+
+- name: install schemas
+  shell: psql -w -U postgres -d {{ item }} -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.sql.used
+  args:
+      creates: /opt/schemas/{{ item }}.sql.used
+  with_items:
+    - forecast
+  become_user: postgres
+
+- name: partition management script
+  copy: src=manage_partitions_forecast.sh dest=~postgres/manage_partitions.sh mode=0755 owner=postgres group=postgres
+
+- name: cron partition management
+  cron: name="manage partitions" user=postgres cron_file=ansible_manage-partitions job="~postgres/manage_partitions.sh >/dev/null 2>&1" special_time=daily
+
+- name: create forecast partitions
+  command: ~postgres/manage_partitions.sh
+  args:
+      creates: /opt/schemas/first_partitions_forecast_created
+  become_user: postgres
+
+- name: Install postgis
+  shell: psql -w -U postgres -d {{ item }} -c "CREATE EXTENSION IF NOT EXISTS postgis;" && touch /opt/schemas/postgis_{{ item }}
+  with_items:
+      - forecast
+  args:
+      creates: /opt/schemas/postgis_{{ item }}
+  become_user: postgres
+
+- name: create obsread role
+  postgresql_user: name=obsread state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="NOLOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION"
+
+- name: create nagios user
+  postgresql_user: name=nagios state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="LOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION" password={{ postgres_users['nagios']['password'] }}
+
+- name: grant nagios forecast schema access
+  postgresql_privs: >
+    login_host=localhost
+    login_password={{ postgres_password }}
+    database=forecast
+    state=present
+    privs=USAGE
+    type=schema
+    objs=oe
+    roles=nagios
+    grant_option=no
+
+- name: grant nagios privs
+  postgresql_privs: >
+    login_host=localhost
+    login_password={{ postgres_password }}
+    database=forecast
+    state=present
+    privs=SELECT
+    type=table
+    objs=data_value
+    schema=oe
+    roles=nagios
+    grant_option=no

@@ -1,0 +1,56 @@
+$def with (lanes, )
+
+<h1>MST Configuration:</h1>
+
+<p>Click the station number to view only that station's lanes.<p>
+<p>You may only update one lane at a time, use the 'Update' button next to each to do so.</p>
+
+
+<table border="1">
+<tr>
+  <td><b>vmdb_id:</b></td>
+  <td><b>station_name:</b></td>
+  <td><b>data_number:</b></td>
+  <td><b>Reverse flow?</b></td>
+  <td><b>specificLane:</b></td>
+  <td><b>groupName:</b></td>
+</tr>
+
+$for lane in lanes
+  $if not lane.xsitype == u'SurfaceInformation':
+    $continue
+  <tr>
+    <form METHOD=POST>
+    <input type="hidden" name="station" value="$lane.vmdb_id">
+    <input type="hidden" name="number" value="$lane.data_number">
+    <td><a href="?station=$lane.vmdb_id">$lane.vmdb_id</a></td>
+    <td><a href="?station=$lane.vmdb_id">$lane.station_name</a></td>
+    <td>$lane.data_number</td>
+    $if lane.reverse:
+      <td><INPUT TYPE="checkbox" name="reverse" CHECKED></td>
+    $else:
+      <td><INPUT TYPE="checkbox" name="reverse"></td>
+    <td>
+      <select name="lane_name">
+      <option></option>
+      $for i in ["allLanesCompleteCarriageway", "busLane", "busStop", "carPoolLane", "centralReservation", "crawlerLane", "emergencyLane", "escapeLane", "expressLane", "hardShoulder", "heavyVehicleLane", "lane1", "lane2", "lane3", "lane4", "lane5", "lane6", "lane7", "lane8", "lane9", "layBy", "leftHandTurningLane", "leftLane", "localTrafficLane", "middleLane", "opposingLanes", "overtakingLane", "rightHandTurningLane", "rightLane", "rushHourLane", "setDownArea", "slowVehicleLane", "throughTrafficLane", "tidalFlowLane", "turningLane", "verge", ]: 
+        $if lane.lane_name == i:
+          <option SELECTED>$i</option>
+        $else:
+          <option>$i</option>
+      </select>
+    </td>
+    <td>
+      <select name="direction">
+      <option></option>
+      $for i in ["allDirections", "bothWays", "clockwise", "anticlockwise", "innerRing", "outerRing", "northBound", "northEastBound", "eastBound", "southEastBound", "southBound", "southWestBound", "westBound", "northWestBound", "inboundTowardsTown", "outboundFromTown", "unknown", "opposite", "other", ]:
+        $if lane.lane_direction == i:
+          <option SELECTED>$i</option>
+        $else:
+          <option>$i</option>
+      </select>
+    </td>
+    <td><input type="submit" value="Update"></td>
+    </form>
+  <tr>
+</table>

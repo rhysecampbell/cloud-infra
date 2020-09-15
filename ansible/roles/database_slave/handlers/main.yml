@@ -1,0 +1,3 @@
+---
+- name: register standby
+  command: /usr/pgsql-9.3/bin/repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose standby register

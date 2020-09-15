@@ -1,0 +1,7 @@
+---
+- name: restart postgres
+  service: name=postgresql-9.3 state=restarted
+
+- name: update fdw
+  command: psql -w -U postgres -d imagedb -f /opt/schemas/fdw.sql
+  become_user: postgres

@@ -1,0 +1,111 @@
+#!/bin/sh
+
+for pid in $(pgrep -f "/bin/sh /home/ldm/bin/radar/add_alpha/radar-maker-us.sh")
+do
+  if [ "$pid" -eq "$$" ]
+  then
+    # This process..
+    continue
+  else
+    echo "Already running as pid $pid"
+    exit 7
+  fi
+  echo "Starting as pid $pid"
+done
+
+# GLOBALS
+HOME=/home/ldm/var/data/radar/mosaic
+RADAR_HOME=/home/ldm/bin/radar/add_alpha 
+LOG=$RADAR_HOME/log
+
+mkdir -p $RADAR_HOME/us-radar-in $RADAR_HOME/us-radar-out $RADAR_HOME/us-animated $LOG
+
+# Trim files from 'live' NOAAport directory
+find $HOME/ -name *.png -mtime +1 -print > $LOG/us-radar-maker.log 2>&1
+
+# Move files into an 'input' directory ready to be processed 
+#/bin/mv $HOME/*.png $RADAR_HOME/us-radar-in >> $LOG/us-radar-maker.log 2>&1
+find $HOME -type f -name *.png -mmin -20 -exec cp {} $RADAR_HOME/us-radar-in/ \; >>$LOG/radar-maker.log 2>&1
+
+# Process all the files using addAlpha
+#
+# Optimized for iPad v3 and retina; slow rendering speeds
+#$RADAR_HOME/addAlpha -i $RADAR_HOME/input -o $RADAR_HOME/processed -f 255 -b 0 -d 5 >> $LOG/radar-maker.log 2>&1
+
+# Optimized for iPad v3; medium rendering speeds
+#$RADAR_HOME/addAlpha -i $RADAR_HOME/input -o $RADAR_HOME/processed -f 255 -b 0 -x 2048 -y 1536 -d 5 >> $LOG/radar-maker.log 2>&1
+
+# Optimized for iPad v2, fastest rendering speeds
+#$RADAR_HOME/addAlpha -i $RADAR_HOME/input -o $RADAR_HOME/processed -f 255 -b 0 -x 1024 -y 768 -d 5 >> $LOG/radar-maker.log 2>&1
+
+#if [[ -f $RADAR_HOME/us-radar-out/us.gif ]] && ! find $RADAR_HOME/us-radar-in -newer $RADAR_HOME/us-radar-out/us.gif | egrep '.*' >/dev/null 2>&1
+#then
+#  # nothing new
+#  exit 5
+#fi
+
+IN=$RADAR_HOME/us-radar-in/
+for file in $IN/*.png
+do
+ gdal_translate -of Gtiff -co "tfw=yes"  -a_ullr -126 50 -66 24 -a_srs "EPSG:4326" $file ${file}.tiff
+ gdalwarp -s_srs EPSG:4326 -t_srs EPSG:3857 ${file}.tiff ${file}_new.tiff
+ gdal_translate -of PNG ${file}_new.tiff $file
+ rm ${file}.tiff ${file}_new.tiff
+done
+
+find $RADAR_HOME/us-radar-out/ -name *.png -mmin +360 -delete
+find $RADAR_HOME/us-animated/ -name *.png -mmin +360 -delete
+
+/usr/local/bin/addAlpha \
+        -i $RADAR_HOME/us-radar-in  \
+        -o $RADAR_HOME/us-animated  \
+        -d 5 \
+        -x 984 \ #2047 \ #-x 1024 \ #-x 2048    \
+        -y 544 \ #1132 \ #-y 768 \ #-y 1048     \
+        -f 255     \
+        -p 1     \
+        -m $RADAR_HOME/resources/us_background_cropped_small.png \
+        -g $RADAR_HOME/us-animated/us.gif \
+        -s 0.5 \
+        -1 10 \
+        -2 10 \
+        -3 12 \
+	-r 0
+
+/usr/local/bin/addAlpha \
+        -i $RADAR_HOME/us-radar-in  \
+        -o $RADAR_HOME/us-radar-out  \
+        -d 5 \
+        -x 984 \
+        -y 544 \
+        -f 255 \
+        -s 0.5
+
+   
+# Remove processed files
+/bin/rm -rf $RADAR_HOME/us-radar-in/*.png >> $LOG/us-radar-maker.log 2>&1
+
+# SCP data (PNG's and GIF) to the image DB server that hosts all the ipad API's and data
+#scp /home/ldm/bin/radar/add_alpha/us-radar-out/*.png root@192.168.5.4:/var/www/html/radar >> $LOG/us-radar-maker.log 2>&1
+#scp /home/ldm/bin/radar/add_alpha/us-animated/*.gif root@192.168.5.4:/var/www/html/usradarloop >> $LOG/us-radar-maker.log 2>&1
+
+{% if 'frontends' in groups %}
+{% for host in groups['frontends'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+#FIXME: Use known_hosts instead.
+rsync -e 'ssh -o StrictHostKeyChecking=no' -avz --ignore-existing /home/ldm/bin/radar/add_alpha/us-radar-out/*.png ldm@{{ ip }}:/var/www/html/radar/us/ >> $LOG/us-radar-{{ ip }}.log 2>&1
+ssh -o StrictHostKeyChecking=no ldm@{{ ip }} find /var/www/html/radar/us/ -name *.png -mtime +0 -delete
+scp -o StrictHostKeyChecking=no /home/ldm/bin/radar/add_alpha/us-animated/us.gif ldm@{{ ip }}:/var/www/html/radar/us/loop.gif >> $LOG/us-radar-{{ ip }}.log 2>&1
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+
+# Don't remove moved files so we can use them later for gif generation...
+## Remove moved files
+#/bin/rm -rf $RADAR_HOME/us-radar-out/*.png >> $LOG/us-radar-maker.log 2>&1
+#Don't remove gif so we can tell if anything's changed.
+#/bin/rm -rf $RADAR_HOME/us-radar-out/*.gif >> $LOG/us-radar-maker.log 2>&1
+
+exit
+

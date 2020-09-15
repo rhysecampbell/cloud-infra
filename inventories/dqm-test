@@ -1,0 +1,26 @@
+[dqm-test]
+db1.dqm.vaicld-test.com ansible_host=104.130.222.251
+idb1.dqm.vaicld-test.com ansible_host=104.130.222.250
+fdb1.dqm.vaicld-test.com ansible_host=104.130.198.154
+proc1.dqm.vaicld-test.com ansible_host=192.237.172.157
+www1.dqm.vaicld-test.com ansible_host=192.237.172.229 extradomains='["dqm.vaicld-test.com","www.dqm.vaicld-test.com"]'
+panopticon.vaicld-test.com
+[dqm-test:vars]
+domain=dqm.vaicld-test.com
+[dqmdb]
+db1.dqm.vaicld-test.com
+[dqmimagedb]
+idb1.dqm.vaicld-test.com
+[dqmforecastdb]
+fdb1.dqm.vaicld-test.com
+[dqmprocessor]
+proc1.dqm.vaicld-test.com
+[dqmweb]
+www1.dqm.vaicld-test.com
+[monitoring]
+[monitoring:children]
+monitoringglobal
+[monitoringglobal]
+panopticon.vaicld-test.com
+[monitoringglobal:vars]
+domain=vaicld-test.com

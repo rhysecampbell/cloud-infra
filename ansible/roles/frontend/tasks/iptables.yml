@@ -1,0 +1,22 @@
+---
+- name: iptables internal
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'imageServer', port: 50000 }
+      - { name: 'python', port: 5000 }
+      - { name: 'httpd', port: 8081 }
+  tags: iptables
+
+- name: iptables external
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'imageServer-haproxy', port: 50001 }
+      - { name: 'httpd', port: 80 }
+      - { name: 'https', port: 443 }
+  tags:
+    - iptables
+    - letsencrypt

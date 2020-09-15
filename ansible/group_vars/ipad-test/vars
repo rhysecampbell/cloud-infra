@@ -1,0 +1,72 @@
+deployment_name: ipad-test
+nagiostemplates: True
+adminui_password: "{{ vault_adminui_password }}"
+db_float: 192.168.10.100
+db_master: 192.168.10.41
+domain: vaicld-test.com
+duplicator: 192.168.10.4
+haproxy_password: "{{ vault_haproxy_password }}"
+lightningdb:
+  host: 192.168.10.5
+  password: "{{ vault_lightningdb_password }}"
+  username: wweb
+log_server: 192.168.10.6
+onesignal:
+  enabled: True
+  environment: test
+  keys:
+    applicationid: 415ae9bf-ce07-49c3-a354-ecab72773cdd
+    auth: "{{ vault_onesignal_auth }}"
+postgres_password: "{{ vault_postgres_password }}"
+postgres_roles:
+  - authwrite
+  - cloudwrite
+  - metarwrite
+  - madiswrite
+  - obsread
+  - pgsqlchkgrp
+  - qualwrite
+  - wzwrite
+postgres_users:
+  cloudserver:
+    password: "{{ vault_postgres_cloudserver_password }}"
+    roles: cloudwrite
+  frontend:
+    password: "{{ vault_postgres_frontend_password }}"
+    roles: obsread
+  madisserver:
+    password: "{{ vault_postgres_madisserver_password }}"
+    roles: madiswrite
+  metarserver:
+    password: "{{ vault_postgres_metarserver_password }}"
+    roles: metarwrite
+  nagios:
+    password: "{{ vault_postgres_nagios_password }}"
+    roles: obsread
+  pgsqlchkusr:
+    password: "{{ vault_postgres_pgsqlchkusr_password }}"
+    roles: pgsqlchkgrp
+  qualserver:
+    password: "{{ vault_postgres_qualserver_password }}"
+    roles: qualwrite
+  rolesmanagement:
+    password: "{{ vault_postgres_rolesmanagement_password }}"
+    roles: authwrite
+  polywrite:
+    password: "{{ vault_postgres_polywrite_password }}"
+    roles: wzwrite
+subnet: 192.168.10
+upstream_ldm:
+  - 192.101.77.131
+  - 63.145.80.36
+reboot_after_yum: False
+
+avicast_password: "{{ vault_avicast_password }}"
+
+tomcat_username: admin
+tomcat_password: "{{ vault_tomcat_password }}"
+
+letsencrypt: True
+
+rackspace_api_username: monitorManager
+rackspace_api_key: "{{ vault_rackspace_api_key }}"

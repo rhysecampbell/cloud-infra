@@ -1,0 +1,4 @@
+Defaults:nrpe !requiretty
+Defaults:nagios !requiretty
+nrpe  ALL=(ALL) NOPASSWD: /usr/local/bin/check_yum.py
+nagios  ALL=(ALL) NOPASSWD: /usr/local/bin/check_yum.py

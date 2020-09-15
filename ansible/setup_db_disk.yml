@@ -1,0 +1,35 @@
+---
+- name: Setup separate disk
+  hosts: dangerwillrobinson
+  tasks:
+    - set_fact: device_path={{ devicetowipe | mandatory }}
+    - set_fact: mount_path={{ archivename | mandatory }}
+
+    - name: Test for existing partitions.
+      command: test -b "{{ device_path }}1"
+      register: device1_presence
+      failed_when: False
+      changed_when: False
+
+    - name: Fail if file existed.
+      fail: msg="{{ device_path }}1 exists - Delete the partition manually if you want to continue."
+      when: device1_presence.rc == 0
+
+    - name: Create partition table.
+      shell: 'echo -e "o\nn\np\n1\n\n\nw" | fdisk {{ device_path }}'
+
+    - name: Create filesystem.
+      filesystem: fstype=ext4 dev="{{ device_path }}1"
+
+    - name: Create mount directory.
+      file: path=/mnt/archive/{{ mount_path }} state=directory
+
+    - name: Mount filesystem.
+      mount: name=/mnt/archive/{{ mount_path }} src="{{ device_path }}1" fstype=ext4 state=mounted
+
+    - name: Chown archive directory
+      file: name=/mnt/archive/{{ mount_path }} owner=postgres group=postgres
+
+    - name: Create postgresql tablespace
+      command: psql -w -U postgres -d "{{ 'imagedb' if 'dqmimagedb' in group_names else 'qualmon2' }}" -c "CREATE TABLESPACE archive_current LOCATION '/mnt/archive/{{ mount_path }}';"
+      become_user: postgres

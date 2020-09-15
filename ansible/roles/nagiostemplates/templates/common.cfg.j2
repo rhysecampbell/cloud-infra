@@ -1,0 +1,120 @@
+define contactgroup{
+        contactgroup_name       {{ deployment_name }}-admins
+        alias                   {{ deployment_name }} Administrators
+        members                 nagiosadmin
+        }
+
+define hostgroup{
+	hostgroup_name		{{ deployment_name }}
+	hostgroup_members	{{ deployment_name }}-servers
+	}
+
+define hostgroup{
+	hostgroup_name		{{ deployment_name }}-servers
+	}
+
+define host{
+	name			{{ deployment_name }}-server
+	use			linux-server
+	register		0
+	hostgroups		{{ deployment_name }}-servers
+	contact_groups		{{ deployment_name }}-admins
+	}
+
+define service{
+	name			{{ deployment_name }}-service
+	use			generic-service
+	register		0
+	contact_groups		{{ deployment_name }}-admins
+	}
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     SSH
+        check_command           check_ssh
+	hostgroup_name		{{ deployment_name }}-servers
+        }
+
+define command{
+	command_name 		{{ deployment_name }}-check_nrpe
+	command_line 		$USER1$/check_nrpe -H $HOSTADDRESS$ -u 3 -t 59 -c $ARG1$
+}
+
+define service{
+        use                     {{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	name			{{ deployment_name }}-nrpe-disk
+        notification_interval   480
+	hostgroups		{{ deployment_name }}-servers
+        register                0
+	}
+
+define service{
+	use			{{ deployment_name }}-nrpe-disk
+	name			{{ deployment_name }}-nrpe-disk-root
+        service_description     /
+        check_command           {{ deployment_name }}-check_nrpe!check_root
+        display_name            root
+	hostgroups		{{ deployment_name }}-servers
+        }
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	Current Load
+	check_command		{{ deployment_name }}-check_nrpe!check_load
+	hostgroups		{{ deployment_name }}-servers
+	}
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	Current Users
+	check_command		{{ deployment_name }}-check_nrpe!check_users
+	hostgroups		{{ deployment_name }}-servers
+	}
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	Zombie Processes
+	check_command		{{ deployment_name }}-check_nrpe!check_zombie_procs
+	hostgroups		{{ deployment_name }}-servers
+	}
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	Total Processes
+	check_command		{{ deployment_name }}-check_nrpe!check_total_procs
+	hostgroups		{{ deployment_name }}-servers
+	notifications_enabled	0
+	}
+
+define service{
+	use			{{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	service_description	Memory
+	check_command		{{ deployment_name }}-check_nrpe!check_memory
+	hostgroups		{{ deployment_name }}-servers
+	}
+
+define service{
+	use			{{ deployment_name }}-service
+        service_description	YUM
+	check_command		{{ deployment_name }}-check_nrpe!check_yum
+	check_interval		60
+	hostgroups		{{ deployment_name }}-servers
+	}
+
+define service {
+	name {{ deployment_name }}-graphed-service
+	action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
+	register 0
+	}
+
+define command{
+	command_name	{{ deployment_name }}-check_ntp_peer
+	command_line	$USER1$/check_ntp_peer -H $HOSTADDRESS$ -w 5 -C 9
+	}
+
+define service {
+	use			{{ deployment_name}}-service
+	service_description	NTP
+	check_command		{{ deployment_name }}-check_ntp_peer
+	hostgroups		{{ deployment_name }}-servers
+	}

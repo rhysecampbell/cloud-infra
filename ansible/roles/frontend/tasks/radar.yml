@@ -1,0 +1,55 @@
+---
+- name: Yum Packages.
+  yum: name={{ item }} state=installed
+  with_items:
+    - libpng
+    - ImageMagick
+    - python-requests
+
+- name: Copy scripts
+  copy: src={{ item }} dest=/usr/local/bin/{{ item }} mode=0755
+  with_items:
+    - fetch_foreca_radar.sh
+    - fetch_foreca_radar.py
+
+- name: Create radar working directories
+  file: path=/var/local/{{ item }} state=directory
+  with_items:
+    - radar
+    - radar/resources
+    - radar/working
+
+- name: Create www directories for radar data
+  file: path=/var/www/html/radar/{{ item.key }} state=directory
+  with_dict: "{{ radarviews }}"
+
+- name: Create region working directories
+  file: path=/var/local/radar/working/{{ item.key }} state=directory
+  with_dict: "{{ radarviews }}"
+
+- name: Create region directories for radar animations
+  file: path=/var/local/radar/working/{{ item.key }}/animated state=directory
+  with_dict: "{{ radarviews }}"
+
+- name: Create radar resources directory
+  file: path=/var/local/radar/resources/{{ item.key }} state=directory
+  with_dict: "{{ radarviews }}"
+
+- name: Copy background images
+  copy: src={{ item.key }}_background.png dest=/var/local/radar/resources/{{ item.key }}/background.png
+  with_dict: "{{ radarviews }}"
+  when: item.value.foreca_layer is defined
+
+- name: cron foreca radar fetching
+  cron: cron_file=ansible_radar user=root name="{{ item.key }} radar fetch" minute="*/15" job="/usr/local/bin/fetch_foreca_radar.sh {{ item.key }} {{ item.value.foreca_layer }} {{ item.value.size.width }} {{ item.value.size.height }} {{ item.value.bounds.top }} {{ item.value.bounds.bottom }} {{ item.value.bounds.left }} {{ item.value.bounds.right }} {{ item.value.transparency }}"
+  with_dict: "{{ radarviews }}"
+  when: item.value.foreca_layer is defined
+
+- name: disable non-foreca radar fetching
+  cron: cron_file=ansible_radar user=root name="{{ item.key }} radar fetch" state=absent
+  with_dict: "{{ radarviews }}"
+  when: item.value.foreca_layer is not defined
+
+- name: Radar .bounds files
+  template: src=bounds.j2 dest=/var/www/html/radar/{{ item.key }}/.bounds
+  with_dict: "{{ radarviews }}"

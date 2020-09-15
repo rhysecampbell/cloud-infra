@@ -1,0 +1,30 @@
+---
+
+- name: install nagios 
+  yum: pkg={{ item }} state=present
+  with_items:
+   - nagios
+   - nagios-plugins
+   - nagios-plugins-nrpe
+   - nagios-plugins-ping
+   - nagios-plugins-ssh
+   - nagios-plugins-http
+   - nagios-plugins-ntp
+   - nagios-devel
+  notify: restart httpd
+
+- name: start nagios
+  service: name=nagios state=started enabled=yes
+
+- name: passwd file
+  copy: src=nagios-passwd dest=/etc/nagios/passwd
+
+- name: authorize for all hosts
+  lineinfile: dest=/etc/nagios/cgi.cfg regexp='^authorized_for_all_hosts=' line='authorized_for_all_hosts=jpc,rec,vaisala'
+  notify: restart nagios
+
+- name: authorize for all services
+  lineinfile: dest=/etc/nagios/cgi.cfg regexp='^authorized_for_all_services=' line='authorized_for_all_services=jpc,rec,vaisala'
+  notify: restart nagios
+
+- include: iptables.yml

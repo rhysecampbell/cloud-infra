@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+
+import json
+import requests
+import psycopg2
+
+from datetime import datetime, timedelta
+
+onesignal_app_id = "{{ onesignal['keys']['applicationid'] }}"
+onesignal_auth = "{{ onesignal['keys']['auth'] }}"
+onesignal_environment = "{{ onesignal['environment'] }}"
+
+roles = {}
+conn = psycopg2.connect("dbname=auth host=localhost port=5432 user=postgres password={{ postgres_password }}")
+curs = conn.cursor()
+curs.execute("""SELECT role, role_description FROM user_roles;""")
+for row in curs:
+    roles[row[0]] = row[1]
+curs.close()
+conn.close()
+
+def send_notification_onesignal(message, data={}, filters=[]):
+    headers = {'Authorization': "Basic %s" % onesignal_auth,
+               'Content-Type': 'application/json; charset=utf-8'}
+    filters.append({"field":"tag","key":"environment","relation":"=","value":onesignal_environment})
+    payload = {"app_id": onesignal_app_id,
+               "data": data,
+               "filters": filters,
+               "ttl": 60*30,
+               "contents": {"en": message},
+               }
+
+    r = requests.post("https://onesignal.com/api/v1/notifications",
+                      data=json.dumps(payload),
+                      headers=headers)
+    return r.json()
+
+def get_station_info(xml_target_name, connectstring="dbname=cloud host=localhost port=5432 user=postgres password={{ postgres_password }}"):
+    conn = psycopg2.connect(connectstring)
+    curs = conn.cursor()
+    curs.execute("""SELECT si.stn_id, si.station_name, si.lat, si.lon, sai.v_region_name
+                    FROM oe.station_identity si
+                    LEFT JOIN oe.station_alias sa ON si.stn_id = sa.stn_id
+                    LEFT JOIN oe.station_alias_identity sai ON sa.v_region_id = sai.v_region_id
+                    WHERE si.xml_target_name = %(xml_target_name)s""",
+                 {'xml_target_name': xml_target_name})
+    stn_id, station_name, lat, lon, region_id = curs.fetchone()
+    curs.close()
+    conn.close()
+    if not station_name:
+        station_name = xml_target_name
+    return stn_id, station_name, region_id, lat, lon
+    
+
+def process_queue(connectstring="dbname=qualmon host=localhost port=5432 user=postgres password={{ postgres_password }}"):
+    conn = psycopg2.connect(connectstring)
+    curs = conn.cursor()
+    curs.execute("""SELECT a.id, a.message, a.channel, st.target_name, a.target, a.locbased
+                    FROM alerts a, station_identity st, sensor_identity se
+                    WHERE a.sensor_id = se.sensor_id
+                      AND se.station_id = st.station_id
+                      AND a.processed_datetime IS NULL
+                      AND a.entry_datetime > CURRENT_TIMESTAMP - interval '5 minutes'""")
+    for alertid, message, channel, target_name, target, locbased in curs.fetchall():
+        stn_id, station_name, region_id, lat, lon = get_station_info(target_name)
+        data = {}
+        if target == '@station@':
+            message = "%s - %s" % (station_name, message)
+            data["station"] = int(stn_id)
+        elif channel:
+            message = "%s; %s" % (message, roles[channel])
+        if region_id:
+            data["region"] = region_id
+        onesignal_filters = []
+        if locbased:
+            if None in (lat, lon):
+                print "No lat/lon for %s" % alertid
+                continue
+            onesignal_filters.append({"field": "location",
+                                      "radius": 16093, # 10 miles in metres
+                                      "lat": lat,
+                                      "long": lon,
+                                      })
+        if channel:
+            onesignal_filters.append({"field":"tag","key":channel,"relation":"=","value":"1"})
+        result = send_notification_onesignal(message, data, onesignal_filters)
+        if 'id' in result:
+            curs.execute("""UPDATE alerts
+                           SET processed_datetime = CURRENT_TIMESTAMP
+                           WHERE id = %(id)s""",
+                        {'id': alertid})
+            conn.commit()
+    curs.execute("""DELETE FROM alerts
+                    WHERE processed_datetime IS NOT NULL
+                      AND entry_datetime < CURRENT_TIMESTAMP - INTERVAL '14 day'""")
+    curs.close()
+    conn.close()
+
+if __name__ == "__main__":
+    process_queue()

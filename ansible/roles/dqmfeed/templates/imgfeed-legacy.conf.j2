@@ -1,0 +1,49 @@
+################################################################################
+# configuration file for postgresql 'dqmFeed' web interface to DQMServer       #
+#                                                                              #
+# this file MUST reside in the </etc/vaisala-config/do-dqmfeed> directory      #
+# BJT November 2014                                                            #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = DEBUG
+LogToFile = yes
+LogFilePath = /var/log/dqm/images
+# LogFilePath = /run/user/dqmfeed/log
+#################################
+# web server setup
+
+ServerPort = 8801
+user = demo
+password = demovai
+noauth = backdoor
+##########################
+
+SetClientEncoding = yes
+ClientCharset = UTF8
+
+###########################
+
+MaxQueryLookbackMins = 720
+
+###########################
+
+
+# postgres or pg_bouncer port
+PostgresPort = 5432
+
+#PostgresServerAddr = 104.130.220.246
+{% for ip in hostvars[groups['dqmimagedb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+PostgresServerAddr = {{ ip }}
+{% endfor %}
+PostgresDBName = imagedb
+PostgresUser = postgres
+#PostgresPassword = vaisala
+PostgresPassword = {{ postgres_password }}
+
+

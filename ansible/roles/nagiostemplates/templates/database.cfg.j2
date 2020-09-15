@@ -1,0 +1,86 @@
+define hostgroup{
+	hostgroup_name		{{ deployment_name }}-databases
+	alias			{{ deployment_name }}-databases
+	hostgroup_members	{{ deployment_name }}-core-databases
+	}
+
+define hostgroup{
+	hostgroup_name		{{ deployment_name }}-core-databases
+	alias			{{ deployment_name }}-core-databases
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-databases
+	alias			{{ deployment_name }}-databases
+	servicegroup_members	{{ deployment_name }}-core-databases
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-core-databases
+	alias			{{ deployment_name }}-core-databases
+	}
+
+define service{
+        use                     {{ deployment_name }}-service,{{ deployment_name }}-graphed-service
+	name			{{ deployment_name }}-nrpe-postgres
+	register		0
+        servicegroups           {{ deployment_name }}-databases
+	hostgroup_name		{{ deployment_name }}-databases
+	}
+
+define service{
+	use			{{ deployment_name }}-nrpe-postgres
+	name			{{ deployment_name }}-nrpe-postgres-pgsql
+        service_description     PostgreSQL
+        check_command           {{ deployment_name }}-check_nrpe!check_pgsql
+        display_name            psql
+        }
+
+define service{
+	use			{{ deployment_name }}-nrpe-postgres
+	name			{{ deployment_name }}-nrpe-postgres-bloat
+        service_description     PostgreSQL Bloat
+        check_command           {{ deployment_name }}-check_nrpe!check_postgres_bloat
+        display_name            PostgreSQL Bloat
+	register		0
+        }
+
+define service{
+	use			{{ deployment_name }}-nrpe-postgres
+	name			{{ deployment_name }}-nrpe-postgres-locks
+        service_description     PostgreSQL Locks
+        check_command           {{ deployment_name }}-check_nrpe!check_postgres_locks
+        display_name            PostgreSQL Locks
+        }
+
+define service{
+	use			{{ deployment_name }}-nrpe-postgres
+	name			{{ deployment_name }}-nrpe-postgres-timesync
+        service_description     PostgreSQL Timesync
+        check_command           {{ deployment_name }}-check_nrpe!check_postgres_timesync
+        display_name            PostgreSQL Timesync
+        }
+
+{% if 'corecluster' in groups %}
+
+define service{
+	use			{{ deployment_name }}-nrpe-postgres
+	name			{{ deployment_name }}-nrpe-postgres-replication
+        service_description     PostgreSQL Replication
+        check_command           {{ deployment_name }}-check_nrpe!check_replication
+        display_name            PostgreSQL Replication
+        servicegroups           {{ deployment_name }}-core-databases
+	hostgroup_name		{{ deployment_name }}-core-databases
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+	name			{{ deployment_name }}-alerts
+	service_description	Check push notifications triggered.
+	check_command		{{ deployment_name }}-check_nrpe!check_alerts
+	display_name		Check push notifications triggered.
+        servicegroups           {{ deployment_name }}-core-databases
+	hostgroup_name		{{ deployment_name }}-core-databases
+	}
+
+{% endif %}

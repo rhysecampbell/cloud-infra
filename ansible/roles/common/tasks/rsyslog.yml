@@ -1,0 +1,7 @@
+---
+- name: remove logstash forwarding
+  file: path=/etc/rsyslog.d/00-logstash.conf state=absent
+
+- name: rsyslog forwarding
+  template: src=rsyslog-forwarding.conf.j2 dest=/etc/rsyslog.d/00-forwarding.conf
+  notify: restart rsyslog

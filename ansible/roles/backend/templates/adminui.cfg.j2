@@ -1,0 +1,32 @@
+loggerDir       = /var/log/ipadconfigurator	# Used by scripts as the default location for logs
+templateDir     = /template
+imageURL	= http://www.{{ domain }}/images
+jsonURL		= http://api.wunderground.com/api/eecf914a4e5e5e57/forecast/q
+
+## You can find this info here: http://haproxy.dsbir.vaisala.com/serwiki/MobileApp/access
+
+dbServer		= {{ db_float }}
+dbName			= cloud
+dbUser			= postgres
+dbPass			= {{ postgres_password }}
+dbPort                  = 6544
+#FIXME: dbUser		= rolesmanagement
+#FIXME: dbPass		= {{ postgres_users.rolesmanagement['password'] }}
+
+imagedbServer		= {{ db_float }}
+imagedbName		= auth
+imagedbUser		= postgres
+imagedbPass		= {{ postgres_password }}
+imagedbPort             = 6544
+
+metardbServer		= {{ db_float }}
+metardbName		= metar
+metardbUser		= postgres
+metardbPass		= {{ postgres_password }}
+metardbPort             = 6544
+
+authdbServer		= {{ db_float }}
+authdbName		= auth
+authdbUser		= postgres
+authdbPass		= {{ postgres_password }}
+authdbPort              = 6544

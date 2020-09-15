@@ -1,0 +1,8 @@
+/var/log/repmgr/*.log {
+    rotate 7
+    missingok
+    compress
+    postrotate
+      /usr/bin/pkill repmgrd
+    endscript
+}

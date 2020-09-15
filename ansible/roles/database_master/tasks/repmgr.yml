@@ -1,0 +1,40 @@
+---
+- name: repmgr user
+  postgresql_user: name=repmgr state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags=CREATEDB,SUPERUSER,LOGIN
+
+- name: createdb repmgr
+  postgresql_db: name=repmgr owner=repmgr state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+
+- name: repmgr.conf
+  template: src=repmgr.conf.j2 dest=/etc/repmgr/9.3/repmgr.conf owner=postgres group=postgres mode=0664
+
+- name: register master
+  shell: "/usr/pgsql-9.3/bin/repmgr -f /etc/repmgr/9.3/repmgr.conf --verbose master register && touch /opt/schemas/repmgr.registered"
+  args:
+    creates: /opt/schemas/repmgr.registered
+  become_user: postgres
+
+- name: chown repmgr.log
+  file: path=/var/log/repmgr/repmgrd-9.3.log owner=repmgr state=touch
+  changed_when: False
+
+- name: start & enable repmgr
+  service: name=repmgr-9.3 state=started enabled=yes
+
+- name: create repmgr.pgsqlchk
+  shell: psql -w -U postgres -d repmgr -c "CREATE TABLE repmgr_vaicld.pgsqlchk (test boolean) WITH (OIDS=FALSE); ALTER TABLE repmgr_vaicld.pgsqlchk OWNER TO postgres; GRANT UPDATE ON TABLE repmgr_vaicld.pgsqlchk TO pgsqlchkgrp;" && touch /opt/schemas/pgsqlchktable
+  args:
+    creates: /opt/schemas/pgsqlchktable
+  become_user: postgres
+
+- name: GRANT USAGE ON SCHEMA repmgr_vaicld TO pgsqlchkgrp
+  shell: psql -w -U postgres -d repmgr -c "GRANT USAGE ON SCHEMA repmgr_vaicld TO pgsqlchkgrp;" && touch /opt/schemas/repmgr_vaicld.pgsqlchkuser
+  args:
+    creates: /opt/schemas/repmgr_vaicld.pgsqlchkuser
+  become_user: postgres
+
+- name: GRANT SELECT ON TABLE repmgr_vaicld.repl_status TO pgsqlchkgrp
+  shell: psql -w -U postgres -d repmgr -c "GRANT SELECT ON TABLE repmgr_vaicld.repl_status TO pgsqlchkgrp;" && touch /opt/schemas/repmgr_vaicld.repl_status-pgsqlchkgrp
+  args:
+      creates: /opt/schemas/repmgr_vaicld.repl_status-pgsqlchkgrp
+  become_user: postgres

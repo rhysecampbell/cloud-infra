@@ -1,0 +1,29 @@
+---
+- name: merge haproxy config
+  assemble: "src=/etc/haproxy/conf.d/ dest=/etc/haproxy/haproxy.cfg delimiter='### START FRAGMENT ###'"
+  notify: restart haproxy
+
+- name: restart haproxy
+  service: name=haproxy state=restarted
+
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+               
+- name: restart iptables
+  service: name=iptables state=restarted
+
+- name: reload nrpe
+  service: name=nrpe state=reloaded
+
+- name: kill imageserver
+  command: 'pkill -f "imageServer -c image.conf" || true'
+
+- name: restart httpd24
+  service: name=httpd24-httpd state=restarted
+
+- name: reload httpd24
+  service: name=httpd24-httpd state=reloaded
+
+- name: restart uwsgi
+  service: name=uwsgi state=restarted

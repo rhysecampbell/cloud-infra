@@ -1,0 +1,31 @@
+---
+- name: init.d migration -> check for upstart service
+  stat: path=/etc/init/ss_{{ service_name }}.conf
+  register: upstart_job
+
+- name: init.d migration -> Stop old init.d script
+  service: name=ss_{{ service_name }} state=stopped
+  when: upstart_job.stat.exists is defined and not upstart_job.stat.exists
+
+- name: /etc/vaisala-config/do-simserver/{{ service_name }}.conf
+  template: src={{ service_name }}.conf.j2 dest=/etc/vaisala-config/do-simserver/{{ service_name }}.conf
+  notify: restart ss_{{ service_name }}
+
+- name: /etc/init/ss_{{ service_name }}.conf
+  template: src=simpleserver.init.j2 dest=/etc/init/ss_{{ service_name }}.conf mode=0644
+  notify: restart ss_{{ service_name }}
+  register: upstart_job
+
+- name: reload upstart
+  command: initctl reload-configuration
+  when: upstart_job|changed
+
+- name: /etc/init.d/ss_{{ service_name }}
+  template: src=simpleserver.init.d.j2 dest=/etc/init.d/ss_{{ service_name }} mode=0755
+
+- name: Restart following simpleServer binary change.
+  service: name=ss_{{ service_name }} state=restarted
+  when: simpleServer_updated|changed
+
+- name: Ensure started
+  service: name=ss_{{ service_name }} state=started

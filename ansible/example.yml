@@ -1,0 +1,11 @@
+---
+- name: Example snippet of common role
+  hosts: all
+
+  tasks:
+
+  - name: Install base software
+    yum: name=ntp state=installed
+
+  - name: Start & enable ntp
+    service: name=ntpd state=started enabled=yes

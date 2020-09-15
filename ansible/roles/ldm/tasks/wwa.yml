@@ -1,0 +1,61 @@
+---
+- name: Yum Packages.
+  yum: name={{ item }} state=installed
+  with_items:
+    - postgis2_93
+    - postgresql93
+    - perl-DBI
+    - perl-DBD-Pg
+
+- name: Check for done directory.
+  stat: path=~ldm/scripts/done
+  register: done_file
+
+- name: Delete done file.
+  file: path=~ldm/scripts/done state=absent
+  when: done_file.stat.isdir == False
+
+- name: Create Directories
+  file: path={{ item }} state=directory owner=ldm group=ldm
+  with_items:
+    - /tmp/json
+    - ~ldm/scripts
+    - ~ldm/scripts/done
+    - /usr/share/perl5/vendor_perl/Weather/
+    - /usr/share/perl5/vendor_perl/Weather/NOAA
+
+- name: Copy libs
+  copy: src=wwa/perl/{{ item }} dest=/usr/share/perl5/vendor_perl/Weather/{{ item }}
+  with_items:
+    - UGC.pm
+    - NOAA/Alert.pm
+
+- name: Copy scripts
+  copy: src=wwa/{{ item }} dest=/home/ldm/scripts/{{ item }} mode=0755
+  with_items:
+    - watchWarnLoader
+
+- name: Copy files
+  copy: src=wwa/{{ item }} dest=/home/ldm/scripts/{{ item }} mode=0644
+  with_items:
+    - fipsCodes.txt
+
+- name: Copy scripts
+  template: src=wwa/{{ item }}.j2 dest=/home/ldm/scripts/{{ item }} mode=0755
+  with_items:
+    - expirePolys.pl
+    - polyParse.pl
+
+- name: cron script
+  cron: name="cron watches & warnings processing"
+        cron_file=ansible_watchsnwarnings
+        user="ldm"
+        minute="*/3"
+        job="/home/ldm/scripts/watchWarnLoader >> /tmp/watchWarn.log 2>>/tmp/watchWarn.err"
+
+- name: cron cleanup
+  cron: name="cron cleanup"
+        cron_file=ansible_watchsnwarnings
+        user="ldm"
+        special_time=weekly
+        job="find ~ldm/scripts/done/ -type f -mtime +90 -delete >/dev/null 2>&1"

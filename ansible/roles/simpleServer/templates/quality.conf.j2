@@ -1,0 +1,102 @@
+################################################################################
+# configuration file for postgresql 'simpleServer' web service                 #
+# currently supported schemas:                                                 # 
+# imageDB                                                                      #   
+# trafficDB                                                                    #
+# qualityDB                                                                    #
+# cloudDB                                                                      #
+# this file MUST reside in the </etc/vaisala-config/do-simserver> directory    #
+# BJT August 2012                                                              #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = WARNING
+LogToFile = yes
+LogFilePath = /var/log/simpleserver/quality
+ServerPort = 30000
+SendTimeout = 60
+ReceiveTimeout = 60
+AcceptTimeout = 0
+MaxKeepAlive = 100
+
+##########################
+# Use gzip compression in the 
+# response message if the calling
+# client supports it.
+
+CompressOutputMessage = yes
+
+#################################
+
+SetClientEncoding = yes
+ClientCharset = LATIN1
+
+##########################
+
+# insert all values from a resultOf as a
+# single transaction. This will speed up
+# the insert process a great deal but
+# will rollback the complete set on error.
+
+BatchInsertMode = yes
+
+##########################
+
+# Setting InsertIntoDatabase to <no>
+# will prevent all database operations and also
+# stop image resizing / thumbnail creation
+
+InsertIntoDatabase = yes
+
+##########################
+# Strip out any ResultOf with Traffic Counting
+# codespaces and save the stripped file for
+# further processing.
+
+SaveStrippedFiles = no
+StrippedXMLOutputPath = /home/brent/simplehub/stripped
+
+##########################
+
+SaveXMLToFile = yes 
+XMLOutputPath = /home/data/sendcc/quality/output
+
+
+# image schema type ############################
+
+dbSchema = qualityDB 
+Base64Encode = yes
+
+SaveImagesToFile = no
+ImageOutputPath = /home/brent/sendws-test/output/images
+ImageQuality = 60
+
+ReFormatImage = yes
+ImageVerticalSize = 480
+ImageHorizontalSize = 640
+
+CreateThumbnailImage = yes
+ThumbVerticalSize = 200
+ThumbHorizontalSize = 300
+
+CreateIconImage = yes
+IconVerticalSize = 80
+IconHorizontalSize = 120
+##############################################
+
+
+PostgresServerAddr = db.vaicld.com
+PostgresPort = 6544
+PostgresDBName = qualmon
+PostgresUser = qualserver
+PostgresPassword = {{ postgres_users.qualserver.password }}
+
+SpreadQualityOutputFiles = no
+SaveXMLToFile = no 
+WriteQualityOutput = yes 
+

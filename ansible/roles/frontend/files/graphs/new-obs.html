@@ -1,0 +1,59 @@
+<html>
+  <head>
+    <title>Vaisala Mobile Graphs</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="minimum-scale=1.0, maximum-scale=1.0,
+                        	width=device-width, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" type="text/css" href="ipad1.css">
+    <style type="text/css">
+
+      body {
+        background-color:#99ccff;
+        color: purple;
+      }
+      
+      #legend {
+        background-color: white;    
+	margin-left:270px;
+        font-weight: bold;
+        font-size: 12px;
+      }
+
+      #banner {
+            color: blue;
+            padding-left:220px;
+            background-color:#99ccff;
+            font-weight: bold;
+            font-size: 20px;
+      }
+
+      #chartContainer {
+            margin-top: 2px;
+            background-color:#ffffff;
+            display:none;
+      }
+
+    </style>
+
+  </head>
+  
+  <body>
+
+      <span id="legend"> 
+          <span class="lineDP" style="margin: 10px;">-----Dew</span>    
+          <span class="lineAT" style="margin: 10px;">-----Air Temp</span>
+          <span class="lineST" style="margin: 10px;">-----Surf Temp</span>
+      </span>
+
+      <div id="banner" ></div>
+
+      <div id="chartContainer"></div>
+      
+      <script src="resources/d3.min.js"></script>
+      <script src="resources/index.js"></script>
+      <script type="text/javascript" src="resources/graph3.js"></script> 
+  </body>
+</html>
+

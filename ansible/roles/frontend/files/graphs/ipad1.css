@@ -1,0 +1,351 @@
+body {
+  font: 10px sans-serif;
+}
+
+
+.axis path,
+
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  fill: none; 
+  stroke: black;
+  stroke-width: 1.5px;
+}
+
+.lineDP {
+  fill: none; 
+  stroke: #008745;
+  stroke-width: 1.5px;
+  color: #008745;
+}
+
+.lineAT {
+  fill: none;
+  stroke: #0570BD;
+  stroke-width: 1.5px;
+  color: #0570BD;
+}
+
+.lineST {
+  fill: none;
+  stroke: #D61A00;
+  stroke-width: 1.5px;
+  color: #D61A00;
+}
+
+
+.grid .tick {
+    stroke: lightgrey;
+    opacity: 0.7;
+}
+.grid path {
+      stroke-width: 0;
+}
+
+/* -------------------------------- */
+
+.d3-rh-combo-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(120, 104, 132, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-rh-combo-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(120, 104, 132, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-rh-combo-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+/* ------------------------------- */
+
+.d3-air-combo-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(5, 112, 189, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+.d3-air-combo-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(5, 112, 189, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-air-combo-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+/* ----------------------------------- */
+
+.d3-fc-air-combo-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(5, 112, 189, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-fc-air-combo-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(100, 100, 150, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-fc-air-combo-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+/* --------------------------------------- */
+
+
+.d3-fc-rh-combo-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+ // background: #fff;
+  background: rgba(120, 104, 132, 0.8);
+  color: #fff;
+//  border-color: blue;
+  border-radius: 4px;
+  pointer-events: none;
+ // offset 
+}
+
+.d3-fc-rh-combo-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(120, 104, 132, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-fc-rh-combo-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+/* ------------------------------------------- */
+
+.d3-fc-air-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(5, 112, 189, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-fc-air-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(5, 112, 189, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-fc-air-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+/* ------------------------------------------------- */
+
+.d3-fc-rh-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+ // background: #fff;
+  background: rgba(120, 104, 132, 0.8);
+  color: #fff;
+  border-color: blue;
+  border-radius: 4px;
+  pointer-events: none;
+ // offset 
+}
+
+.d3-fc-rh-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(120, 104, 132, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-fc-rh-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+/* -------------------------------------------- */
+
+
+.d3-rh-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+ // background: #fff;
+  background: rgba(120, 104, 132, 0.8);
+  color: #fff;
+  border-color: blue;
+  border-radius: 4px;
+  pointer-events: none;
+ // offset 
+}
+
+.d3-rh-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(120, 104, 132, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-rh-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+/* ------------------------------------------ */
+
+
+.d3-air-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(5, 112, 189, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-air-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(5, 112, 189, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+/* Northward tooltips */
+.d3-air-tip.n:after {
+content: "\25BC";
+margin: -1px 0 0 0;
+top: 100%;
+left: 0;
+text-align: center;
+}
+
+
+
+.d3-surf-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(214, 26, 0, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-surf-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(214, 26, 0, 0.8);
+position: absolute;
+pointer-events: none;
+}
+
+
+.d3-dp-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 6px;
+  background: rgba(0, 135, 69, 0.8);
+  color: #fff;
+  border-radius: 4px;
+}
+
+.d3-dp-tip:after {
+box-sizing: border-box;
+display: inline;
+font-size: 10px;
+width: 100%;
+line-height: 1;
+color: rgba(0, 135, 69, 0.8);
+position: absolute;
+pointer-events: none;
+}
+

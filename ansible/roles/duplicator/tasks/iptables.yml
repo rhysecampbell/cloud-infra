@@ -1,0 +1,18 @@
+---
+- name: iptables internal
+  command: /sbin/iptables -I INPUT 1 -s 192.168.0.0/16 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.service }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.service }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+    - { 'service': 'etcd', 'port': '4001' }
+    - { 'service': 'etcd', 'port': '7001' }
+  tags: iptables
+
+- name: iptables external
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport {{ item }} -j ACCEPT -m comment --comment "ansible-simpleServer-{{ item }}"
+  when: iptablesrules.stdout.find("ansible-simpleServer-{{ item }}") == -1
+  notify: save iptables
+  with_items:
+    - 30000
+    - 50000
+  tags: iptables

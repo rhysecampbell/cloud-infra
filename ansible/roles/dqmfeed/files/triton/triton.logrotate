@@ -1,0 +1,9 @@
+/var/log/triton/*.log {
+    daily
+    rotate 3
+    compress
+    missingok
+    sharedscripts
+    notifempty
+    compress
+}

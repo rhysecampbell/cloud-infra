@@ -1,0 +1,377 @@
+/**
+ * Styles for the main application.
+ */
+ 
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ECECEC;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    /* font-family: Courier New, Monospace;  */ /* test if all fonts change */
+    color: #222222;
+}
+
+/* Banner area */
+
+#banner {
+    background: transparent url(rdsimages/toolbar/banner-bg.png) repeat-x 100% 100% scroll;
+    height: 45px !important;
+    position: relative;
+    margin-top: 0;
+    width: 100%;
+}
+
+#banner a {
+    display: block;
+    float: left;
+    height: 45px;
+    text-indent: -9000px;
+    width: 260px;
+}
+#banner a.link-vaisala-observerApp {
+    background: transparent url(rdsimages/toolbar/logo-observer.png) no-repeat scroll left center;
+}
+#banner a.link-vaisala-navigatorApp {
+    background: transparent url(rdsimages/toolbar/logo-navigator.png) no-repeat scroll left center;
+}
+#banner a.link-vaisala-advisorApp {
+    background: transparent url(rdsimages/toolbar/logo-advisor.png) no-repeat scroll left center;
+    width: 369px;
+}
+#banner a.link-vaisala-managerApp {
+    background: transparent url(rdsimages/toolbar/logo-manager.png) no-repeat scroll left center;
+}
+
+/* Login */
+
+#loginPage {
+    width: 900px;
+    margin: 40px auto;
+    text-align:left;
+}
+
+.formLabel {
+    width: 150px;
+}
+
+.formField {
+    padding-right: 20px;
+
+}
+.formField input {
+    background-color: #FFFFFF;
+    border: 1px solid #77AEDE;
+    width: 150px;
+}
+.formField input:focus {
+    border-color: #386A9D;
+    box-shadow: 0 0 4px #77AEDE;
+}
+
+#loginPage h1 {
+    margin: 0;
+    padding: 5px 20px;
+    font-weight: bold;
+}
+
+#loginPage h2 {
+    margin: 0;
+    padding-top: 0px;
+    padding-bottom: 15px;
+    font-weight: normal;
+    color: #00728F;
+}
+
+#release-version {
+    position: relative;
+    top: -20px;
+    right: 20px;
+    float: right;
+    color: #717171;
+    font-size: 10px;
+}
+
+#release-version-text {
+    float: left;
+}
+
+#release-version-number {
+    float: left;
+    padding-left: 5px;
+}
+
+#loginPage, #loginPage h1, #loginPage td {
+    font-size: 12px;
+}
+
+.RdsContactInfoCell {
+    padding-left: 20px;    
+    vertical-align: top;    
+}
+
+#login-form-wrapper {
+}
+
+.loginHeader {
+    background: #FAFAFA url(rdsimages/panelheader-bg.png) repeat-x scroll 0 0;
+    border: 1px solid #B5B5B5;
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+    -moz-border-radius: 5px 5px 0 0;
+    -webkit-border-radius: 5px 5px 0 0;
+}
+
+.loginBody {
+    background: #FAFAFA;
+    background: -webkit-gradient(linear, left top, left bottom, from(#ECECEC), to(#FAFAFA));
+    background: -moz-linear-gradient(top, #ECECEC, #FAFAFA);
+    border: 1px solid #B5B5B5;
+    border-top: none;
+    padding: 20px;    
+    border-radius: 0 0 5px 5px;
+    -moz-border-radius: 0 0 5px 5px;
+    -webkit-border-radius: 0 0 5px 5px;
+}
+
+#login-button-cell {
+    height: 40px;
+}
+
+#login-button {
+    padding: 2px 12px;
+    border: 1px solid #C0D7F0;
+    border-radius: 2px;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    font-size: 12px;
+    color: #333333;
+    margin: 2px;
+    background: #C0D7F0 url(rdsimages/button-bg.png) repeat-x scroll 0 0;
+}
+#login-button:hover {
+    background: #C0D7F0 url(rdsimages/button-bg-hover.png) repeat-x scroll 0 0;
+}
+#login-button:active {
+    background: #C0D7F0 url(rdsimages/button-bg-active.png) repeat-x scroll 0 0;
+}
+#login-button[disabled] {
+    border: 1px solid #B5B5B5;
+    background: #ECECEC;
+    cursor: default;
+}
+
+.loginTable {
+    width: 860px;
+    border-width: 0px;
+    border-spacing: 0px;
+    border-collapse:collapse;
+}
+
+.userNameRow td {
+    padding-bottom: 2px;
+}
+
+.passwordRow td {
+    padding-top: 2px;
+    padding-bottom: 20px;
+}
+
+.notificationBody {
+    background-color: #D9E9B9;
+    border: 1px solid #A4D742;
+    padding: 20px;
+    margin-top: 25px;
+    border-radius: 5px 5px 5px 5px;
+    -moz-border-radius: 5px 5px 5px 5px;
+    -webkit-border-radius: 5px 5px 5px 5px;
+}
+
+/* Password recovery */
+
+.passwordRecoveryStatusLabel {
+    margin: 5px 5px 5px 10px;
+    padding-left: 80px;
+    color: Blue4;
+    background-image: url(rdsimages/progressbar-short.gif);
+    background-repeat: no-repeat;
+    background-position: left center;
+}
+
+/* Messages panel*/
+
+#messages {
+    width: 100%;
+    display: block;
+    clear: both;
+    
+}
+.cleaner {
+    clear: both;    
+    width: 100%;
+}
+
+.commonErrorMessages, .commonInfoMessages, .loginPageErrorMessages, .loginPageSessionExpired {
+    color: #000;
+    
+    margin-left: 0;
+    margin-right: 0;
+    
+     font-size: 12px;
+}
+.commonErrorMessages, .loginPageErrorMessages, .loginPageSessionExpired {
+    height: 50px;
+    background: #FFFFFF url(rdsimages/status-warning.png) no-repeat;
+    background-position: 100px;
+    border: medium solid red;    
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+.commonInfoMessages {
+    height: 30px;    
+    border: medium solid green;
+    background-color: #aaffaa;
+    margin-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.commonErrorMessages *, .loginPageErrorMessages *, .loginPageSessionExpired * {
+     margin-left: 150px;
+      margin-top: 15px;
+}
+.commonInfoMessages * {
+     margin-left: 150px;
+      margin-top: 8px;
+}
+.commonErrorMessages, .commonInfoMessages {
+    width: 100%;    
+}
+
+.loginPageErrorMessages, .loginPageSessionExpired {
+}
+
+.loginPageErrorMessages {
+    display: none;
+}    
+
+/* Vaisala RDS specific styling*/
+
+a, a:active, a:visited, .RdsActionLink {
+    color: #00728F;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.RdsLoading {
+    display: none;
+    position: relative;
+    color: #000;
+    font-weight: normal;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 50px;
+}
+
+.RdsLoadingProgress {
+    position: absolute;
+    margin-top: 200px;
+    margin-left: -400px;
+}
+
+.RdsLoadingTxt {
+    margin-top: 100px;
+    font-weight: normal;
+    font-size: 14px;
+    text-align: center;
+}
+
+
+/*RDS Single station top widget************************************/
+
+.RdsSingleStationTimestampLabel {
+    font-size: 12px; 
+    text-align: right;
+    margin-bottom: 2px;
+    height: 16px;
+    color: #717171;
+}
+
+.WebCam,
+.WindRose {
+    margin-right: 20px;
+}
+
+.CrossCut {
+    margin-right: 10px;
+}
+
+.RoadState {
+    margin-right: 15px;
+}
+
+/*Wind rose*/
+
+.RdsWindRose {
+    margin-left: 14px;    
+    margin-top: 1px;    
+}
+
+/*Road crosscut*/
+
+.RdsRoadCrosscutParameterBox, .RdsRoadCrosscutParameterBoxIE {
+      background-image: url(rdsimages/crosscut/rds-roadcrosscut-arrow-wide.png);
+      background-repeat: no-repeat;
+      background-position: center;
+      color: #FFFFFF;
+      position: relative;
+}
+
+/* fix for firefox versions 3.6 - 7 but not IE */
+.RdsRoadCrosscutParameterBox td:first-child + td {
+    position: absolute;
+}
+
+.RdsRoadCrosscutParameterValue {
+    font-size: 16px;
+    font-weight: bold;
+    position: absolute;
+    right: 0;
+    top: 7px;
+    padding-left:1px;
+    margin-right: 11px;
+    white-space: nowrap;
+    width: 90px;
+    height: 25px;
+    overflow: hidden;    
+}
+
+.RdsRoadCrosscutParameterText {
+    font-size: 11px;
+    font-weight: lighter;
+    width: 75px;    
+    overflow: hidden;
+    padding-left: 22px;
+    padding-bottom: 3px;
+    margin-right: 2px;
+    margin-bottom: 5px;
+}
+
+.RdsRoadStatusNotAvailable .statusText {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* this fix hides wind rose center box on IE7 */
+.windRoseCenterText .obsLabelStatInterval {
+    height: 0px !important;
+    border-bottom: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}

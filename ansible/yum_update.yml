@@ -1,0 +1,13 @@
+---
+- name: YUM Updates
+  hosts: all
+  gather_facts: no
+  roles:
+    - role: yum_update
+
+- name: Rolling Reboots
+  hosts: all
+  serial: 1
+  roles:
+    - role: rolling_reboot
+      when: yumupdate.changed and (reboot_after_yum != "False" and reboot_after_yum)

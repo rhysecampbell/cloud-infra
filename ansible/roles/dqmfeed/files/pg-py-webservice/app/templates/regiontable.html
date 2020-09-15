@@ -1,0 +1,24 @@
+$def with (stations, data, sensortable)
+<html>
+<body>
+  <table border="1">
+    <tr>
+      <th>Station:</th>
+      <th>Date:</th>
+      $for sensor in sensortable.itervalues():
+        <th>$sensor[0] $sensor[1]</th>
+    </tr>
+    $for vmdb_id, dates in data.iteritems():
+      <tr>
+         <td><a href="stationtable.html?station=$vmdb_id">$stations[vmdb_id].row['station_name']</a></td>
+           $for date, row in dates:
+             <td>$date</td>
+             $for sensor in sensortable.iterkeys():
+               $if sensor in row:
+                 <td>$row[sensor]</td>
+               $else:
+                 <td>&nbsp;</td>
+     </tr>
+  </table>
+</body>
+</html>

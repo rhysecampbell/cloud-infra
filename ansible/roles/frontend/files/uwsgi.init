@@ -1,0 +1,7 @@
+# simple uWSGI script
+
+description "uwsgi tiny instance"
+start on runlevel [2345]
+stop on runlevel [06]
+
+exec uwsgi --http :5000 --wsgi-file /var/www/python/settserver.py --master --processes 1 --threads 2 --die-on-term --stats 127.0.0.1:9191 --logto /var/log/uwsgi.log

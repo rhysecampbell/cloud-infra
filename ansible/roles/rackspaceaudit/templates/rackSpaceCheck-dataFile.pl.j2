@@ -1,0 +1,414 @@
+#!/usr/bin/perl
+
+use LWP::Simple;
+use JSON qw( decode_json encode_json );
+use Data::Dumper;
+
+use Net::SSH qw(sshopen2);
+use File::Touch;
+
+
+$sshUser = "rackmon";
+
+$webPath=	"/var/www/html/securityReports";
+$scripts=	"/home/$sshUser/scripts";
+$cmd=		"yum -q check-update";
+
+$USERNAME='{{ rackspace_api_username }}';	# user here
+$API_KEY='{{ rackspace_api_key }}';	# key here
+
+
+$authData1 = {
+   auth => {
+      "RAX-KSKEY:apiKeyCredentials" => { 
+          username => $USERNAME,
+          apiKey   => $API_KEY,
+       },
+   },
+};
+$json = encode_json($authData1);
+
+$ua = new LWP::UserAgent;
+
+$req = HTTP::Request->new(POST => 'https://identity.api.rackspacecloud.com/v2.0/tokens');
+$req->content_type('application/json');
+$req->content( $json );
+
+$response = $ua->request($req);
+
+$decodedContent = $response->decoded_content();
+$decodedJSON = decode_json( $decodedContent );
+
+$token = $decodedJSON->{'access'}->{'token'}->{'id'};
+
+$ua = LWP::UserAgent->new;
+ 
+$server_endpoint = "https://ord.servers.api.rackspacecloud.com/v2/853326/servers/detail";
+ 
+# set custom HTTP request header fields
+$req = HTTP::Request->new(GET => $server_endpoint);
+$req->header('content-type' => 'application/json');
+$req->header('x-auth-token' => $token);
+ 
+$response = $ua->request($req);
+
+$decodedContent = $response->decoded_content();
+
+# deal with bad auth
+unless ($decodedContent =~ m/\d/) {
+	print "no data";
+	exit;
+	}
+
+$decodedList = decode_json( $decodedContent );
+$hostCount=0;
+
+
+$time=time;
+
+
+for (;;) {
+ $publicV4="";
+ $systemID="";
+ @server = sort keys %{$decodedList->{'servers'}[$hostCount]{'addresses'}};
+ $id=		$decodedList->{'servers'}[$hostCount]{'id'};
+ $status=	$decodedList->{'servers'}[$hostCount]{'status'};
+ unless ($id) {
+	last; }
+
+
+  foreach $interface (@server) {	# there shouldn't be more than 20 interfaces on any server
+		for ($addrCount=0;$addrCount<19;$addrCount++) {
+		$addr[$addrCount] = $decodedList->{'servers'}[$hostCount]{'addresses'}{$interface}[$addrCount]{'addr'};
+		}
+	if ($interface eq "private") {
+		$systemID = $addr[0];
+		}
+	if (($interface eq "public") && ($status eq 'ACTIVE')) {
+		$public0 = $addr[0];
+		$public1 = $addr[1];
+		if ($public0 =~ m/\d+\.\d+\.\d+\.\d+/) { $publicV4=$public0; }
+		if ($public1 =~ m/\d+\.\d+\.\d+\.\d+/) { $publicV4=$public1; }
+
+		print "Scanning $publicV4..\n";
+		$host = $publicV4;
+
+		sshopen2("$sshUser\@$host", *READER, *WRITER, "$cmd") || die "ssh: $!";
+
+		@patches=();
+
+		unlink("$webPath/$systemID.patches.txt");
+		while (<READER>) {
+		    chomp();
+		@patches=(<READER>);
+
+		close(READER);
+		close(WRITER);
+
+		open (PATCHES,">$webPath/$systemID.patches.txt");
+		print PATCHES @patches;
+		close PATCHES;
+		}
+
+		unless (@patches) {
+			touch("$webPath/$systemID.patches.txt");
+			}
+		unlink("$webPath/$systemID.scan.txt");
+		`nmap -Pn $publicV4 -oN $webPath/$systemID.scan.txt`;
+		}
+ 	}
+
+
+ $hostCount++;
+
+}
+
+$hostCount=0;
+
+open (RESULT,">$webPath/systems.csv");
+
+
+for (;;) {
+ @server = sort keys %{$decodedList->{'servers'}[$hostCount]{'addresses'}};
+ $id=		$decodedList->{'servers'}[$hostCount]{'id'};
+ $status=	$decodedList->{'servers'}[$hostCount]{'status'};
+ $name=		$decodedList->{'servers'}[$hostCount]{'name'};
+ unless ($id) {
+	last; }
+ if ($status eq "ACTIVE") {
+	$status=1;
+	}
+ else {
+	$status=0;
+	}
+
+
+ print RESULT "$name,$status,";
+ close RESULT;
+
+
+ open (PATCHES,"$webPath/$systemID.patches.txt");
+ @patches=<PATCHES>;
+ close PATCHES;
+ $patchNoteCount=@patches;
+
+ open (SCAN,"$webPath/$systemID.scan.txt");
+ @scan=<SCAN>;
+ close SCAN;
+ $scanNoteCount= grep /open/, @scan;
+
+
+open (RESULT,">>$webPath/systems.csv");
+
+# patch notes
+ print RESULT "$patchNoteCount,";
+
+# scan results
+ print RESULT "$scanNoteCount,";
+
+
+# clear the public and VCS addresses
+@vcsIP=();
+$publicIP="";
+
+  foreach $interface (@server) {        # there shouldn't be more than 20 interfaces on any server
+                for ($addrCount=0;$addrCount<19;$addrCount++) {
+                $addr[$addrCount] =             $decodedList->{'servers'}[$hostCount]{'addresses'}{$interface}[$addrCount]{'addr'};
+                }
+        if ($interface eq "private") {
+                $systemID = $addr[0];
+                }
+        elsif ($interface eq "public") {
+
+                $public0 = $addr[0];
+                $public1 = $addr[1];
+                if ($public0 =~ m/\d+\.\d+\.\d+\.\d+/) { $publicIP=$public0; }
+                if ($public1 =~ m/\d+\.\d+\.\d+\.\d+/) { $publicIP=$public1; }
+                }
+        else {
+                push (@vcsIP, "$addr[0]|");
+        }
+  }
+
+
+        print RESULT "$publicIP,$systemID,@vcsIP\n";
+
+
+ $hostCount++;
+
+}
+
+close RESULT;
+
+print "Building network diagrams..\n";
+
+# cleanup previous run
+unlink glob "$webPath/network/systemNets/*.png";
+unlink glob "$webPath/network/systemNets/*.diag";
+
+
+open (SYSTEMS,"$webPath/systems.csv");
+@systemInfo = <SYSTEMS>;
+close SYSTEMS;
+
+foreach $line (@systemInfo) {
+	chomp $line;
+	$line =~ m/([^\,]*)\,([^\,]*)\,([^\,]*)\,([^\,]*)\,([^\,]*)\,([^\,]*)\,([^\,]*)/;
+		$name=$1;
+		$publicIP=$5;
+		$vcsIPs=$7;
+		push (@systems,$name);
+
+		$system{$name}{'public'}=$publicIP;
+		$system{$name}{'vcsIPs'}=$vcsIPs;
+	}
+
+
+
+# assuming maximum 10 networks on a host.  If we need more, just add more pattern matching stuff
+foreach $name (@systems) {
+	$system{$name}{'vcsIPs'} =~ m/([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*/;
+		$systemNet01=$1;	
+		$systemNet02=$2;	
+		$systemNet03=$3;
+		$systemNet04=$4;	
+		$systemNet05=$5;	
+		$systemNet06=$6;	
+		$systemNet07=$7;	
+		$systemNet08=$8;	
+		$systemNet09=$9;	
+		$systemNet10=$10;
+
+		if ($systemNet01 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet02 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet03 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet04 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet05 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet06 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet07 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet08 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet09 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+		if ($systemNet10 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $private{$1}{$2}=$name;
+		 }
+
+	}
+
+open (VCS,">$webPath/network/systemNets/vcs.diag");
+
+print VCS "nwdiag {\n";
+
+
+for ($network=1;$network<20;$network++) {
+ unless (Dumper($private{$network}) =~ m/\'/) { next; }	# omit empty networks
+ print VCS "  network 192.168.$network.0 {\n";
+ print VCS "     address = \"192.168.$network.0/24\"\n\n";
+  for ($node=1;$node<50;$node++) {
+	$name = $private{$network}{$node};
+	if ($name =~ m/\w/) {
+		print VCS "       $name [address = \"192.168.$network.$node\"];\n";
+		$group[$network] = $group[$network] . "$name [address = \"192.168.$network.$node\"];\n";
+		}
+	}
+  print VCS "  }\n";
+   }
+print VCS "}\n";
+close VCS;
+
+# build up individual systemNetDiag diagrams for each specific host
+foreach $line (@systemInfo) {
+	chomp $line;
+	$line =~ m/([^\,]*)\,[^\,]*\,[^\,]*\,[^\,]*\,[^\,]*\,[^\,]*\,([^\,]*)/;
+		$name=$1;
+		$vcsIPs=$2;
+		$vcsIPs =~ m/([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*([^\|]*)\|*/;
+			$systemNet01=$1;	
+			$systemNet02=$2;	
+			$systemNet03=$3;
+			$systemNet04=$4;	
+			$systemNet05=$5;	
+			$systemNet06=$6;	
+			$systemNet07=$7;	
+			$systemNet08=$8;	
+			$systemNet09=$9;	
+			$systemNet10=$10;
+			
+		if ($systemNet01 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet02 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet03 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet04 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet05 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet06 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet07 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet08 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet09 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+		if ($systemNet10 =~ m/192\.168\.(\d*)\.(\d*)/) {
+		 $systemNetDiag = $systemNetDiag . "  network 192.168.$1.0 {\n";
+		 $systemNetDiag = $systemNetDiag . "    address = \"192.168.$1.0/24\"\n\n";
+		 $systemNetDiag = $systemNetDiag . $group[$1];
+		 $systemNetDiag = $systemNetDiag . "$name [color = \"#A0FFA0\"];\n";
+		 $systemNetDiag = $systemNetDiag . "}\n\n";
+		 }
+
+  if ($systemNetDiag =~ m/\d/) {
+	open (SYSTEMNETDIAG,">$webPath/network/systemNets/$name.diag");
+	print SYSTEMNETDIAG "nwdiag {\n";
+	print SYSTEMNETDIAG "  node_width=200;\n";
+        print SYSTEMNETDIAG "$systemNetDiag\n";
+	print SYSTEMNETDIAG " }\n";
+	close SYSTEMNETDIAG;
+	}
+	$systemNetDiag="";
+	}
+
+system("$scripts/buildNWpng.sh");

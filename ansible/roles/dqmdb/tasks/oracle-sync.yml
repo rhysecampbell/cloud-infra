@@ -1,0 +1,15 @@
+---
+- name: Install SUDS
+  yum: name=python-suds state=installed
+
+- name: Copy sync script.
+  template: src=oracle-sync/station-meta.py.j2 dest=/opt/station-meta.py mode=0755
+  when: sm_username is defined and sm_password is defined
+
+- name: Cron sync script.
+  cron: cron_file=ansible_oracle-sync name="oracle sync" user="root" minute="0" hour="*/6" job="/opt/station-meta.py >/var/log/station-meta.log 2>&1"
+  when: sm_username is defined and sm_password is defined
+
+- name: Disable cron sync script.
+  cron: cron_file=ansible_oracle-sync name="oracle sync" state=absent
+  when: not (sm_username is defined and sm_password is defined)

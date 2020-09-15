@@ -1,0 +1,17 @@
+---
+- name: Yum Packages.
+  yum: name={{ item }} state=installed
+  with_items:
+    - libpng
+    - ImageMagick
+    - gdal
+
+- name: Create directories
+  file: path={{ item }} state=directory owner=ldm group=ldm
+  with_items:
+    - ~ldm/bin/radar
+    - ~ldm/bin/radar/add_alpha
+    - ~ldm/bin/radar/add_alpha/resources
+
+- include: radar-uk.yml
+- include: radar-us.yml

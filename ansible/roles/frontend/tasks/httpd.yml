@@ -1,0 +1,74 @@
+---
+
+# You might be wondering why we're using httpd24 from the Centos Software
+# Collections...
+#
+# We want to be able to auth all requests (Even for static files) using a
+# single username & password. Previously, static requests used photodude.
+#
+# Centos6 includes httpd 2.2 which includes both mod_auth_dbd &
+# mod_auth_external. The former doesn't allow usage of our existing database
+# schema and neither are very useful without the caching provided by
+# mod_authn_socache which only appeared with httpd 2.3
+#
+# Using both mod_auth_external & mod_authn_socache we can ensure requests
+# are dealt with as quickly as they would be with just an AuthFile
+
+- name: remove standard httpd
+  yum: name=httpd state=absent
+
+- name: Enable software collections
+  yum: name=centos-release-SCL state=installed
+
+- name: Install httpd2.4
+  yum: name=httpd24 state=installed
+
+- name: install httpd.conf
+  copy: src=httpd24.conf dest=/opt/rh/httpd24/root/etc/httpd/conf/httpd.conf owner=root group=root mode=0644
+  notify: restart httpd24
+
+- name: enable mod_speling
+  copy: dest=/opt/rh/httpd24/root/etc/httpd/conf.modules.d/10-speling.conf content="LoadModule speling_module modules/mod_speling.so"
+  notify: restart httpd24
+
+- name: install mod_authnz_external
+  copy: src=mod_authnz_external.so dest=/opt/rh/httpd24/root/etc/httpd/modules/mod_authnz_external.so  owner=root group=root mode=0755
+  notify: restart httpd24
+
+- name: Create www directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /var/www
+    - /var/www/html
+    - /var/www/html/images
+    - /var/www/html/graphs
+    - /var/www/html/foreca
+    - /var/www/html/radar
+    - /var/www/html/alerts
+
+- name: Start httpd & ensure started on boot.
+  service: name=httpd24-httpd state=started enabled=yes
+
+- name: copy check_user.py
+  copy: src=check_user.py dest=/opt/check_user.py owner=root group=root mode=0755
+
+- name: Create www forecasts directory
+  file: path=/var/www/html/forecasts state=directory owner=metftp1
+
+- name: Link alternative country codes
+  file: path=/var/www/html/{{ item.old }} state=link src={{ item.new }} force=yes
+  with_items:
+    - { old: 'radar/gb', new: 'uk' }
+    - { old: 'radar/ie', new: 'uk' }
+
+- name: Graph static files
+  copy: src=graphs dest=/var/www/html/
+
+- name: Copy map.html demo
+  copy: src=map.html dest=/var/www/html/map.html
+
+- name: foreca static files
+  unarchive: src=foreca-weather.zip dest=/var/www/html creates=/var/www/html/foreca-weather
+
+- name: alerts test map
+  copy: src=alerts dest=/var/www/html/

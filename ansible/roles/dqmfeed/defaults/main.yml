@@ -1,0 +1,7 @@
+---
+letsencrypt: False
+
+triton_url: "https://www.3tier.com/api/v2/"
+triton_username: "dqm_export"
+
+triton_sendEmail: False

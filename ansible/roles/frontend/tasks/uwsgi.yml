@@ -1,0 +1,39 @@
+---
+- name: install other python packages
+  yum: name={{ item }} state=installed
+  with_flattened:
+    - python-psycopg2
+    - python-setuptools
+    - gcc
+    - python-devel
+    - python-pip
+
+- name: install python libraries
+  pip: name={{ item.name }} version={{ item.version|default(omit) }} state=present
+  with_items:
+    - name: web.py
+    - name: DBUtils
+    - name: uwsgi
+      version: 2.0.12
+
+- name: Install uwsgi init
+  copy: src=uwsgi.init dest=/etc/init/uwsgi.conf
+  notify: restart uwsgi
+
+- name: Install uwsgi init.d
+  copy: src=uwsgi.init.d dest=/etc/init.d/uwsgi mode=0755
+  notify: restart uwsgi
+
+- name: Create python dir
+  file: path=/var/www/python state=directory
+
+- name: Install settserver.py
+  copy: src=settserver/server.py dest=/var/www/python/settserver.py
+  notify: restart uwsgi
+
+- name: Install swagger.yaml
+  copy: src=settserver/static/swagger.yaml dest=/var/www/html/swagger.yaml
+
+- name: Install settserver.cfg
+  template: src=settserver.cfg.j2 dest=/etc/vaisala-config/settserver.cfg
+  notify: restart uwsgi

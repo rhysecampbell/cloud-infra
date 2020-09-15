@@ -1,0 +1,35 @@
+---
+- name: merge haproxy config
+  assemble: "src=/etc/haproxy/conf.d/ dest=/etc/haproxy/haproxy.cfg delimiter='### START FRAGMENT ###'"
+  notify: restart haproxy
+
+- name: restart haproxy
+  service: name=haproxy state=restarted
+
+- name: save iptables
+  command: service iptables save
+  notify: restart iptables
+                             
+- name: restart iptables
+  service: name=iptables state=restarted
+
+- name: restart dqmdatafeed
+  service: name=dqmdatafeed state=restarted
+
+- name: restart dqmimagefeed
+  service: name=dqmimagefeed state=restarted
+
+- name: restart dqmimagefeed-legacy
+  service: name=dqmimagefeed-legacy state=restarted
+
+- name: restart putgeo
+  service: name=putgeo state=restarted
+
+- name: restart httpd
+  service: name=httpd state=restarted
+
+- name: restart uwsgi
+  service: name=uwsgi state=restarted
+
+- name: restart pg-py-webservice
+  service: name=pg-py-webservice state=restarted

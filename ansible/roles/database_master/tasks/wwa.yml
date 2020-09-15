@@ -1,0 +1,41 @@
+---
+- name: grant schema privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT USAGE ON SCHEMA dynamic TO wzwrite, obsread;" && touch /opt/schemas/wwa_dynamic_wzwrite
+  args:
+      creates: /opt/schemas/wwa_dynamic_wzwrite
+  become_user: postgres
+
+- name: grant schema privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT USAGE ON SCHEMA static TO wzwrite, obsread;" && touch /opt/schemas/wwa_static_wzwrite
+  args:
+      creates: /opt/schemas/wwa_static_wzwrite
+  become_user: postgres
+
+- name: grant nwsalerts privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT SELECT, UPDATE, INSERT, TRUNCATE, DELETE ON TABLE dynamic.nwsalerts TO wzwrite; GRANT SELECT ON TABLE dynamic.nwsalerts TO obsread;" && touch /opt/schemas/wwa_nwsalerts
+  args:
+      creates: /opt/schemas/wwa_nwsalerts
+  become_user: postgres
+
+- name: grant nwsalerts_gid_seq privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT ALL ON SEQUENCE dynamic.dnwsalerts_gid_seq TO wzwrite;" && touch /opt/schemas/wwa_dnwsalerts_gid_seq
+  args:
+      creates: /opt/schemas/wwa_dnwsalerts_gid_seq
+  become_user: postgres
+
+- name: grant nwspubliczones privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT SELECT ON TABLE static.{{ item }} TO wzwrite;" && touch /opt/schemas/wwa_select_static.{{ item }}
+  args:
+      creates: /opt/schemas/wwa_select_static.{{ item }}
+  become_user: postgres
+  with_items:
+      - nwspubliczones
+      - nwsfirezones
+      - usstates
+      - uscounties
+
+- name: grant state/county privs
+  shell: psql -w -U postgres -d weatherzones -c "GRANT SELECT ON TABLE static.usstates TO obsread; GRANT SELECT ON TABLE static.uscounties TO obsread;" && touch /opt/schemas/wwa_statecounty
+  args:
+      creates: /opt/schemas/wwa_statecounty
+  become_user: postgres

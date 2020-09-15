@@ -1,0 +1,20 @@
+---
+- name: pgsqlchk
+  template: src=pgsqlchk.j2 dest=/usr/local/bin/pgsqlchk mode=0755
+
+- name: xinetd configuration
+  template: src={{ item }}.xinetd.j2 dest=/etc/xinetd.d/{{ item }} mode=0600
+  with_items:
+      - pgsqlchk
+      - pgsqlchk-read
+  notify: reload xinetd
+
+- name: enable & start xinetd
+  service: name=xinetd enabled=yes state=started
+
+- name: /etc/services
+  lineinfile: dest=/etc/services regexp="^{{ item.service }} " line="{{ item.service }}     {{ item.port }}/tcp"
+  with_items:
+      - {'service': 'pgsqlchk', 'port': '45432'}
+      - {'service': 'pgsqlchk-read', 'port': '45435'}
+  notify: restart xinetd

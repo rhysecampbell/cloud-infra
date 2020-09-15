@@ -1,0 +1,8 @@
+---
+schemas:
+    - auth
+    - cloud
+    - qualmon
+    - metar
+    - madis
+    - weatherzones

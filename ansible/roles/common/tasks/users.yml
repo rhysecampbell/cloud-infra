@@ -1,0 +1,37 @@
+---
+- name: admin group
+  group: name=admin state=present
+  tags: ssh
+
+- name: sudoers admin group
+  copy: content='%admin   ALL=(ALL:ALL) NOPASSWD:ALL' dest=/etc/sudoers.d/admin_group mode=0400
+  tags: ssh
+
+- name: Set up users.
+  user: name={{ item }} password={{ users[item].crypted_password }} groups=admin
+  with_items: "{{ administrators }}"
+  tags: ssh
+
+- name: authorized_keys
+  authorized_key:
+      user: "{{ item }}"
+      key: "{{ '\n'.join(users[item].ssh_keys) }}"
+      manage_dir: True
+      exclusive: True
+  with_items: "{{ administrators }}"
+  tags: 
+    - ssh
+
+- name: Disable password login.
+  lineinfile: dest=/etc/ssh/sshd_config regexp='^PasswordAuthentication ' line='PasswordAuthentication no'
+  notify: reload sshd
+
+- name: Disable root ssh login.
+  lineinfile: dest=/etc/ssh/sshd_config regexp='^PermitRootLogin ' line='PermitRootLogin no'
+  notify: reload sshd
+
+- name: Disable users.
+  user: name={{ item }} state=absent
+  with_items: administrators_disabled
+  when: administrators_disabled is defined
+  tags: ssh

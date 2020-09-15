@@ -1,0 +1,32 @@
+$def with (stations, )
+
+<h1>MST Configuration:</h1>
+
+<p>You may only update one station at a time, use the 'Update' button next to each to do so.</p>
+
+<table border="1">
+<tr>
+  <td><b>vmdb_id:</b></td>
+  <td><b>Station Name:</b></td>
+  <td><b>Measurement Side:</b></td>
+</tr>
+
+$for station in stations
+  <tr>
+    <form METHOD=POST>
+    <input type="hidden" name="station" value="$station.vmdb_id">
+    <td><a href="?station=$station.vmdb_id">$station.vmdb_id</a></td>
+    <td><a href="?station=$station.vmdb_id">$station.station_name</a></td>
+    <td>
+      <select name="measurementside">
+      <option></option>
+      $for i in ["allDirections", "bothWays", "clockwise", "anticlockwise", "innerRing", "outerRing", "northBound", "northEastBound", "eastBound", "southEastBound", "southBound", "southWestBound", "westBound", "northWestBound", "inboundTowardsTown", "outboundFromTown", "unknown", "opposite", "other", ]:
+        $if station.measurementside == i:
+          <option SELECTED>$i</option>
+        $else:
+          <option>$i</option>
+      </select>
+    <td><input type="submit" value="Update"></td>
+    </form>
+  <tr>
+</table>

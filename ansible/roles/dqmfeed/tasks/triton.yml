@@ -1,0 +1,165 @@
+- name: perl modules
+  yum:
+    name: "{{ item }}"
+    state: installed
+  with_items:
+      - perl-libwww-perl
+      - perl-Crypt-SSLeay
+      - perl-JSON
+      - perl-Config-Simple
+      - perl-DBI
+      - perl-DBD-Pg
+      - mailx
+
+- name: Triton user
+  user:
+    name: triton
+    state: present
+
+- name: Decide db host
+  set_fact:
+    triton_db_url: "{{ item }}"
+  with_items: "{{ hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses }}"
+  when: item.startswith(subnet)
+  tags: always
+
+- name: Create config
+  ini_file:
+    dest: /etc/vaisala-config/triton.ini
+    section: triton
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    mode: 0600
+    owner: triton
+    group: triton
+    state: present
+    create: yes
+  with_dict:
+      url: "{{ triton_url }}"
+      username: "{{ triton_username }}"
+      password: "{{ triton_password }}"
+      dbUser: postgres
+      dbPass: "{{ postgres_password }}"
+      db: "{{ triton_db_url }}"
+
+- name: Create ses config
+  ini_file:
+    dest: /etc/vaisala-config/triton.ini
+    section: smtp
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    mode: 0600
+    owner: triton
+    group: triton
+    state: present
+    create: yes
+  with_dict:
+      enabled: "{{ triton_sendEmail | default('0') }}"
+      destination: "{{ triton_email_destination | default('') }}"
+
+- name: mail.rc
+  template:
+    src: triton-mail.rc.j2
+    dest: /home/triton/.mailrc
+  when: triton_sendEmail
+
+- name: copy fields-lookup.txt
+  copy:
+    src: triton/fields-lookup.txt
+    dest: /home/triton/fields-lookup.txt
+    owner: triton
+    group: triton
+    mode: 0644
+
+- name: Copy scripts
+  copy:
+    src: triton/scripts
+    dest: /home/triton/
+    mode: 0755
+    owner: triton
+    group: triton
+
+- name: directories
+  file:
+    path: /home/triton/{{ item }}
+    state: directory
+    owner: triton
+    group: triton
+  with_items:
+      - lastEvents
+      - lastUpdates
+      - sendcc-completed
+      - status-xml
+      - row-xml
+      - speaker-xml
+      - xml-processed
+      - speakerStats
+      - rowStats
+
+- name: sendcc.conf
+  copy:
+    src: triton/conf/{{ item }}
+    dest: /etc/vaisala-config/do-sendcc/{{ item }}
+  with_items:
+      - triton.conf
+      - triton-status.conf
+      - triton-row.conf
+      - triton-speaker.conf
+
+- name: touch sendcc logfile
+  file:
+    path: /var/log/sendcc/{{ item }}.log
+    owner: triton
+    group: triton
+    mode: 0644
+    state: touch
+  with_items:
+      - triton
+      - triton-status
+      - triton-speaker
+      - triton-row
+
+- name: cron obs
+  cron:
+    name: process obs
+    minute: 3,13,23,33,43,53
+    job: /home/triton/scripts/tritonAPI-Obs.sh >>/var/log/triton/obs.log 2>&1
+    user: triton
+    cron_file: ansible_triton
+
+- name: cron events
+  cron:
+    name: process events
+    minute: 7,17,27,37,47,57
+    job: /home/triton/scripts/tritonAPI-SE.sh >>/var/log/triton/sysevents.log 2>&1
+    user: triton
+    cron_file: ansible_triton
+
+- name: cron location checker
+  cron:
+    name: check for locations change
+    minute: 7
+    job: /home/triton/scripts/locationCheckChange.pl >>/var/log/triton/location.log 2>&1
+    user: triton
+    cron_file: ansible_triton
+    disabled: "{{ triton_sendEmail | bool == False }}"
+
+- name: Cleanup triton data.
+  cron:
+    name: Cleanup triton data.
+    minute: 4
+    job: /bin/find /home/triton/sendcc-completed -type f -mtime +2 -delete
+    user: triton
+    cron_file: ansible_triton
+
+- name: triton log folder
+  file:
+    path: /var/log/triton
+    owner: triton
+    group: triton
+    state: directory
+
+- name: install triton logrotate
+  copy:
+    src: triton/triton.logrotate
+    dest: /etc/logrotate.d/triton

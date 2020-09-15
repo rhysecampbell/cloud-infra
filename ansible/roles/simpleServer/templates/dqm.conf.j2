@@ -1,0 +1,182 @@
+################################################################################
+# configuration file for postgresql 'simpleServer' web service                 #
+# currently supporting:                                                        # 
+# imageDB                                                                      #                 
+# trafficDB                                                                    #
+# this file MUST reside in the </etc/vaisala-config/do-simserver> directory    #
+# BJT August 2012                                                              #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = INFO
+LogToFile = yes
+LogFilePath = /var/log/simpleserver/dqm
+
+ServerPort = 30001
+
+SendTimeout = 60
+ReceiveTimeout = 60
+AcceptTimeout = 0
+MaxKeepAlive = 100
+
+##########################
+
+# insert all values from a resultOf as a
+# single transaction. This will speed up
+# the insert process a great deal but
+# will rollback the complete set on error.
+
+#################################
+# cludge to remove duplicate entries in xml files
+
+RemoveResultOfDuplicates = yes
+
+##########################
+
+SetClientEncoding = yes
+ClientCharset = LATIN1
+
+BatchInsertMode = yes
+
+##########################
+
+# Setting InsertIntoDatabase to <no>
+# will prevent all database operations and also
+# stop image resizing / thumbnail creation
+
+InsertIntoDatabase = yes
+
+##########################
+# Strip out any ResultOf with Traffic Counting
+# codespaces and save the stripped file for
+# further processing.
+
+SaveStrippedFiles = no
+StrippedXMLOutputPath = /home/data/simpleserver/dqm/stripped
+
+##################################
+# xmlHub / qualityDB settings.
+# if InsertIntoDatabase = <no> then
+# xmlHub will simply separate incoming files
+# into specific codespace output directories
+# if InsertIntoDatabase = <yes> then
+# xmlHub will check for duplicate resultOfs
+# and remove any duplicated datasets
+# **Must** have a Postgresql database to function.
+
+# xmlHub / qualityDB will also separating data / image files and 
+# (optionally) spreading the output files into subdirectories
+# Note 1
+# multiple codespace types may be pointed to the same
+# output directories if required.
+# Note 2
+# **ON Startup** SS will check for configured output directories
+# and create them if they do not exist.
+#------------------------------------------------
+ 
+CleanedOutputFileRoot = /home/data/simpleserver/dqm/cleaned
+
+# codespace subdirectories --------
+# SS will only create / use directories
+# that have been defined here. 
+M14Dir = cloud
+M16Dir = cloud
+NTCIPDir = cloud
+
+# IceSensorDataDir = ice_sensor
+# IceUserDir = ice_user
+IceMastdataDir = mast
+# IceBufrDir = bufr
+# IceKokkolaDir = kokkla
+WXTDir = cloud
+# ERUDir = eru
+# FIIcealertDir = icealert
+# SSIDir = ssi
+WavetronixDir = traffic
+RTMSDir = traffic
+GroundhogDir = traffic
+MaritimeDir = cloud
+AirportsDir = cloud
+# HydroDir = hydro
+WindDir = cloud
+DefenseDir = cloud
+MixedCodeSpaceDir = cloud
+AllImageDir = image
+#--------------------------------------------
+# spread xml output files when using
+# multiple instances of sendcc to forward
+# the xml files.
+
+ImageDirNo = 4
+DataDirNo = 4
+
+#-----------------------------------------------
+# Write All image xmls to the same output
+# directory path (AllImageDir)
+# else images are written to separate
+# codespace directories
+
+WriteToImageDir = yes
+
+# ----------------------------
+# enable qualityDB to write data
+# xmls to the xmlHub directory tree
+
+SpreadQualityOutputFiles = no
+
+
+
+##########################
+
+SaveXMLToFile = no 
+XMLOutputPath = /home/data/simpleserver/dqm/output
+
+# image schema type ############################
+
+dbSchema = dqm 
+Base64Encode = yes
+
+SaveImagesToFile = no
+ImageOutputPath = /home/data/simpleserver/dqm/images
+ImageQuality = 60
+
+ReFormatImage = yes
+ImageVerticalSize = 480
+ImageHorizontalSize = 640
+
+CreateThumbnailImage = yes
+ThumbVerticalSize = 200
+ThumbHorizontalSize = 300
+
+CreateIconImage = yes
+IconVerticalSize = 80
+IconHorizontalSize = 120
+##############################################
+
+
+
+# postgres or pg_bouncer port
+PostgresPort = 5432
+# PostgresServerAddr = localhost
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+PostgresServerAddr = {{ ip }}
+{% endfor %}
+PostgresDBName = qualmon2
+PostgresUser = postgres
+PostgresPassword = {{ postgres_password }}
+#PostgresPassword = postgres
+
+# QC0 defaults / settings
+MaxFutureTime = 4
+MaxHistoryTime = 168 # (1 week)
+
+
+# Allow changes to use FDW (foreign tables)
+LastReadingTablePrefice = qm
+MainTablePrefice = qm
+

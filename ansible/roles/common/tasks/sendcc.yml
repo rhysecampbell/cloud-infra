@@ -1,0 +1,12 @@
+---
+- name: sendcc binary
+  copy: src=sendcc dest=/usr/local/bin/sendcc mode=0755
+
+- name: sendcc config dir
+  file: path=/etc/vaisala-config/do-sendcc state=directory
+
+- name: sendcc log dir
+  file: path=/var/log/sendcc state=directory
+
+- name: "logrotate: sendcc"
+  copy: src=sendcc.logrotate dest=/etc/logrotate.d/sendcc

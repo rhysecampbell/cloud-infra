@@ -1,0 +1,246 @@
+[% INCLUDE header.html %]
+<script id="source" language="javascript" type="text/javascript">
+$(document).ready(function() {
+	window.configInt = {};
+	window.configInt.cache = {
+		mainForm:$("#mainForm"),
+		secondForm:$("#secondForm"),
+		stationID:$("#stationID"),
+		xmlName:$("#xmlName"),
+		regionID:$('#regionID'),
+		vRegion:$('#vRegion'),
+		stationDiv:$('#stationDiv'),
+		vRegionList:$('#vRegionList'),
+			vRegionListInfo:$('#vRegionListInfo'),
+		addedBy:$('#addedBy'),
+			addedByInfo:$('#addedByInfo'),
+		addDescription:$('#addDescription'),
+			addDescriptionInfo:$('#addDescriptionInfo'),
+		createListSubmit:$('#createListSubmit'),
+		mapStations:$('#mapStations'),
+		unmapStations:$('#unmapStations'),
+			mapMessage:$('#mapMessage'),
+		virtualRegionListDiv:$('#virtualRegionList'),
+	};
+	window.configInt.settings = {	
+		baseURL:'/rest/v1.0',
+	};
+	
+	drawPage();
+});
+
+function drawPage() {
+	configInt.cache.addedBy.val('');
+	configInt.cache.addDescription.val('');
+	configInt.cache.mapMessage.html('');
+	resetPage();
+
+	configInt.cache.createListSubmit.click(function() {
+		stationList();
+	});
+	configInt.cache.mapStations.click(function() {
+		if(	inputValidation('vRegionList','notBlank')	
+			&& inputValidation('addedBy','length',[2,10])
+			&& inputValidation('addDescription','length',[2,100])
+		) {
+			configInt.cache.mapMessage.html('');
+			virtualRegionMap();
+		}
+	});
+	configInt.cache.unmapStations.click(function() {
+		if(	inputValidation('vRegionList','notBlank')	
+			&& inputValidation('addedBy','length',[2,10])
+			&& inputValidation('addDescription','length',[2,100])
+		) {
+			configInt.cache.mapMessage.html('');
+			deleteVirtualRegionMap();
+		}
+	});
+
+	
+	configInt.cache.stationID.tokenInput(configInt.settings.baseURL +'/get/stationName', {
+		preventDuplicates: true,
+		theme: "facebook"
+	});
+	configInt.cache.xmlName.tokenInput(configInt.settings.baseURL +'/get/xmlName', {
+		preventDuplicates: true,
+		theme: "facebook"
+	});
+	configInt.cache.regionID.tokenInput(configInt.settings.baseURL +'/get/orgRegion', {
+		preventDuplicates: true,
+		theme: "facebook"
+	});
+	configInt.cache.vRegion.tokenInput(configInt.settings.baseURL +'/get/vRegion', {
+		preventDuplicates: true,
+		theme: "facebook"
+	});
+	
+	setSelectBox(configInt.cache.vRegionList,'roleListSimple');
+	pagerTable('cloudAssociation');
+
+	return;
+}
+
+function resetPage() {
+	configInt.cache.mapStations.attr('disabled','disabled');
+	configInt.cache.unmapStations.attr('disabled','disabled');
+
+	configInt.cache.stationDiv.html('');
+	
+	$('table').trigger("update"); 
+	return;
+}
+
+</script>
+
+<div id="mainPage">
+	<noscript>
+		<div class="commonErrorMessages">
+			<p>You must enable JavaScript to use this application.</p>
+		</div>
+	</noscript>
+
+	
+	<div class="form-wrapper">
+		<div class="header">
+			<h1>Create Station List</h1>
+		</div>
+		<div id="release-version">
+			<div id="release-version-text">Version</div>
+			<div id="release-version-number">[% version %]</div>
+		</div>
+		<div class="plotBody">
+			<form id="mainForm" onsubmit="return false">
+			<table id="searchlist">
+			<tr>
+				<td valign="top">Station Name</td>
+				<td><input id="stationID" type="text" /></td>
+			</tr><tr>
+				<td valign="top">Station Alias Name (XML name)</td>
+				<td><input id="xmlName" type="text" /></td>
+			</tr><tr>
+				<td valign="top">Organization (Region Code/Name)</td>
+				<td><input id="regionID" type="text" /></td>
+			</tr><tr>
+				<td valign="top">Virtual Region</td>
+				<td><input id="vRegion" type="text" /></td>
+			</tr><tr>
+				<td><input id="createListSubmit" type="button" value="Create Station List"></td>
+				<td></td>
+			</tr>
+			</table>
+			</form>
+		</div>
+		<div id="message" style="display: none;">
+		</div>
+	</div>
+<br />
+	<div class="form-wrapper">
+		<div class="header">
+		<h1>Station / Virtual Region Association</h1>
+		</div>
+		<div class="plotBody">
+			<div id="infoText" style="display: none;">
+			By default all stations are selected in the list below. If you wish to only modify a few station them unselect them by ether using the "Uncheck all" feature or the check boxes.
+			</div>
+			<form id="mainForm2" onsubmit="return false">
+			<table id="searchlist2">
+			<tr>
+				<td>Station List</td>
+				<td colspan="3"><div id="stationDiv"></div></td>
+				<td></td>
+				<td></td>
+			</tr><tr>
+				<td>Virtual Regions</td>
+				<td><select id="vRegionList" title="Virtual Region"></select></td>
+				<td colspan="2"><div id="vRegionListInfo"></div></td>
+			</tr><tr>
+				<td>Added By:</td>
+				<td><input id="addedBy" type="text" name="addedBy" /></td>
+				<td>Comment:</td>
+				<td><input id="addDescription" type="text" name="description" size="40" /></td>
+			</tr><tr>
+				<td> </td>
+				<td><div id="addedByInfo"></div></td>
+				<td> </td>
+				<td><div id="addDescriptionInfo"></div></td>
+			</tr><tr>
+				<td><input id="mapStations" type="button" value="Add/Update Stations" disabled /></td>
+				<td colspan="3">Add selected Station List to the selected Virtual Region</td>
+			</tr><tr>
+				<td><input id="unmapStations" type="button" value="Remove Stations" disabled /></td>
+				<td colspan="3">Remove selected Station List from the selected Virtual Region</td>
+			</tr><tr>
+				<td colspan="4">&nbsp;</td>
+			</tr><tr>
+				<td colspan="4"><div id="mapMessage" class="actionMessage"></td>
+			</tr>
+			</table>
+			</form>
+		</div>
+		<div id="message" style="display: none;">
+		</div>
+	</div>
+</div>
+<br />
+<div id="resultsTable">
+	<table class="tablesorter">
+		<thead>
+			<tr>
+				<td class="pager sorter-false" colspan="9">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+			<tr>
+				<td class="pager" colspan="9">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+		</tfoot>
+		<tbody>
+		</tbody>
+	</table>
+</div>
+[% INCLUDE footer.html %]

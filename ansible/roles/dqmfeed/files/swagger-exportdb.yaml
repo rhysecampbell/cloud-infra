@@ -1,0 +1,261 @@
+swagger: '2.0'
+info:
+  title: DQM ExportDB Legacy API
+  description: |
+    Serves DQM data
+  version: "0.9.0"
+# the domain of the service
+#host: proc1.dqm.vaicld.com
+# array of all schemes that your API supports
+#schemes:
+#  - http
+# will be prefixed to all paths
+basePath: /
+produces:
+  - application/xml
+  - image/jpeg
+  - text/html
+tags:
+  - name: obs
+    description: Observations
+    externalDocs:
+      description: Find out more
+      url: https://confluence.vaisala.com/confluence/display/RWISiPad
+  - name: images
+    description: Images
+    externalDocs:
+      description: Find out more
+      url: https://confluence.vaisala.com/confluence/pages/viewpage.action?pageId=14558021
+  - name: datex2
+    description: DatexII
+    externalDocs:
+      description: Find out more
+      url: http://datex2.eu
+  - name: meta
+    description: Metadata
+  - name: ntcip
+    description: NTCIP
+paths:
+  /export/vaisalaobs.xml:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/region"
+        - $ref: "#/parameters/earliesttime"
+        - $ref: "#/parameters/latesttime"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - obs
+      produces:
+        - application/xml
+      responses:
+        200:
+          description: An array of station observations.
+        304:
+          description: Returned when no new data since If-Modified-Since header.
+        404:
+          description: No data found for the specified parameters.
+  /export/qttntcipobs.xml:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces RWIS observation data in QTT's NTCIP format.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/region"
+        - $ref: "#/parameters/earliesttime"
+        - $ref: "#/parameters/latesttime"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - obs
+        - ntcip
+      produces:
+        - application/xml
+      responses:
+        200:
+          description: An array of station observations.
+        304:
+          description: Returned when no new data since If-Modified-Since header.
+        404:
+          description: No data found for the specified parameters.
+  /export/image.jpg:
+    get:
+      summary: RWIS Images
+      description: |
+        This produces RWIS single images.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/latesttimejpg"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - images
+      produces:
+        - image/jpg
+      responses:
+        200:
+          description: A single jpg image.
+        304:
+          description: Returned when no new data since If-Modified-Since header.
+        404:
+          description: No data found for the specified parameters.
+  /jpglist.html:
+    get:
+      summary: RWIS Images list
+      description: |
+        This produces a html table of image links for a station.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - images
+        - meta
+      produces:
+        - text/html
+      responses:
+        200:
+          description: A list of images for the station.
+        404:
+          description: No data found for the specified parameters.
+  /datex2/content.xml:
+    get:
+      summary: RWIS Data
+      description: |
+        This produces DatexII formatted RWIS observation data.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/region"
+        - $ref: "#/parameters/earliesttime"
+        - $ref: "#/parameters/latesttime"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - obs
+        - datex2
+      produces:
+        - application/xml
+      responses:
+        200:
+          description: An array of station observations.
+        304:
+          description: Returned when no new data since If-Modified-Since header.
+        404:
+          description: No data found for the specified parameters.
+  /datex2/mst.xml:
+    get:
+      summary: Datex2 Measurement Site Table
+      description: |
+        This produces DatexII formatted RWIS metadata.
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: "#/parameters/username"
+        - $ref: "#/parameters/password"
+        - $ref: "#/parameters/station"
+        - $ref: "#/parameters/region"
+        - $ref: "#/parameters/earliesttime"
+        - $ref: "#/parameters/latesttime"
+        - $ref: "#/parameters/ifmodifiedsince"
+      tags:
+        - meta
+        - datex2
+      produces:
+        - application/xml
+      responses:
+        200:
+          description: An array of station metadata.
+        304:
+          description: Returned when no new data since If-Modified-Since header.
+        404:
+          description: No data found for the specified parameters.
+securityDefinitions:
+  basicAuth:
+    type: basic
+    description: HTTP Basic Authentication. Works over `HTTP` and `HTTPS`
+parameters:
+  username:
+    name: username
+    in: query
+    description: Username
+    required: false
+    type: string
+  password:
+    name: password
+    in: query
+    description: Password
+    required: false
+    type: string
+  station:
+    name: station
+    in: query
+    description: Station vmdb_id
+    required: false
+    type: integer
+  region:
+    name: region
+    in: query
+    description: Region vmdb_id
+    required: false
+    type: integer
+  earliesttime:
+    name: earliesttime
+    in: query
+    description: |
+        Time period based on ISO8601
+        
+        e.g. "2011-09-23 00:00:00"
+    required: false
+    type: string
+  latesttime:
+    name: latesttime
+    in: query
+    description: |
+        Time period based on ISO8601
+        
+        e.g. "2011-09-24 00:00:00"
+    required: false
+    type: string
+  latesttimejpg:
+    name: latesttime
+    in: query
+    description: |
+        Produces an image as old as, but not older than, this datetime. Latest image is
+        produced if omitted.
+        
+        Time period based on ISO8601
+        
+        e.g. "2011-09-24 00:00:00"
+    required: false
+    type: string
+  ifmodifiedsince:
+    name: If-Modified-Since
+    in: header
+    description: |
+      A HTTP 304 response should be expected if no new records have been made available
+      since this timestamp.
+      
+      The content of the ''Last-Modified'' response header should be used when repeating
+      identical requests. This will ensure minimal processing & no repeated data.
+    required: false
+    type: string

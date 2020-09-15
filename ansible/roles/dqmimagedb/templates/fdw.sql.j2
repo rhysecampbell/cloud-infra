@@ -1,0 +1,4 @@
+{% for ip in hostvars[groups['dqmdb'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+ALTER SERVER qual_service OPTIONS (SET host '{{ ip }}');
+{% endfor %}
+ALTER USER MAPPING FOR postgres SERVER qual_service OPTIONS (SET password '{{ postgres_password }}');

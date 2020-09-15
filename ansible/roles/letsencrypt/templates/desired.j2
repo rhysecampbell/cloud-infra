@@ -1,0 +1,6 @@
+satisfy:
+  names:
+  - {{ ansible_nodename }}
+{% for domain in extradomains %}
+  - {{ domain }}
+{% endfor %}

@@ -1,0 +1,101 @@
+---
+- name: schema directory
+  file: path=/opt/schemas owner=postgres state=directory
+
+- name: initdb
+  command: service postgresql-9.3 initdb
+  args:
+    creates: /var/lib/pgsql/9.3/data/base
+    warn: False
+
+- name: install postgresql configuration files
+  template: src={{ item }}.j2 dest=/var/lib/pgsql/9.3/data/{{ item }} owner=postgres group=postgres mode=600
+  notify: restart postgres
+  with_items:
+    - postgresql.conf
+    - pg_hba.conf
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started
+
+- name: set postgres password
+  command: psql -w -U postgres -d postgres -c "alter user postgres with password '{{ postgres_password }}';"
+  changed_when: False
+  become_user: postgres
+
+#- name: create cloud user
+#  postgresql_user: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+#  with_items:
+#      - cloud
+
+- name: createdb
+  postgresql_db: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+    - qualmon2
+
+- name: Install extensions
+  shell: psql -w -U postgres -d {{ item[0] }} -c "CREATE EXTENSION IF NOT EXISTS {{ item[1] }};" && touch /opt/schemas/{{ item[1] }}_{{ item[0] }}
+  with_nested:
+      - [ 'qualmon2', ]
+      - [ 'postgis', 'pg_repack' ]
+  args:
+      creates: /opt/schemas/{{ item[1] }}_{{ item[0] }}
+  become_user: postgres
+  tags:
+      - pg_repack
+
+- name: copy schemas
+  copy: src=schemas/{{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items:
+    - qualmon2
+
+- name: install schemas
+  shell: psql -w -U postgres -d {{ item }} -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.sql.used
+  args:
+      creates: /opt/schemas/{{ item }}.sql.used
+  with_items:
+    - qualmon2
+  become_user: postgres
+
+- name: Increase qm.sensor_cross_check.xcheck_definition size
+  shell: psql -w -U postgres -d qualmon2 -c "ALTER TABLE qm.sensor_cross_check ALTER COLUMN xcheck_definition TYPE varchar(300);" && touch /opt/schemas/xcheck_definition.done
+  args:
+      creates: /opt/schemas/xcheck_definition.done
+  become_user: postgres
+
+- name: Copy new get_sensors_missing_list()
+  copy: src=V111_001__missing_sensors.sql dest=/opt/schemas/V111_001__missing_sensors.sql
+
+- name: get_sensors_missing_list() 60 minutes
+  shell: psql -w -U postgres -d qualmon2 -f /opt/schemas/V111_001__missing_sensors.sql && touch /opt/schemas/V111_001__missing_sensors.sql.done
+  args:
+      creates: /opt/schemas/V111_001__missing_sensors.sql.done
+  become_user: postgres
+
+- name: partition management script
+  copy: src=manage_partitions_qualmon2.sh dest=~postgres/manage_partitions.sh mode=0755 owner=postgres group=postgres
+  tags:
+      - pg_repack
+
+- name: cron partition management
+  cron: name="manage partitions" user=postgres cron_file=ansible_manage-partitions job="~postgres/manage_partitions.sh >/dev/null 2>&1" special_time=daily
+  tags:
+      - pg_repack
+
+- name: create qualmon2 partitions
+  command: ~postgres/manage_partitions.sh
+  args:
+      creates: /opt/schemas/first_partitions_qualmon2_created
+  become_user: postgres
+
+- name: create nagios user
+  postgresql_user: name=nagios state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="LOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION" password={{ postgres_users['nagios']['password'] }}
+
+- name: Prune old rollup_parameter_performance
+  cron: name="manage rollup_parameter_performance" user=postgres cron_file=ansible_manage-partitions job="psql qualmon2 -c \"delete from qm.rollup_parameter_performance where obs_creationtime < now() - interval '6 months';\" >/dev/null 2>&1" special_time=weekly
+
+- name: Create archive folder
+  file: path={{ item }} owner=postgres state=directory
+  with_items:
+      - /mnt/archive
+      - /mnt/archive/current

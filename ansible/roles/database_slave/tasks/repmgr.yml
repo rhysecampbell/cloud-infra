@@ -1,0 +1,13 @@
+---
+- name: repmgr.conf
+  template: src=repmgr.conf.j2 dest=/etc/repmgr/9.3/repmgr.conf owner=postgres group=postgres mode=0664
+
+- name: clonedb
+  command: /usr/pgsql-9.3/bin/repmgr -d repmgr -p 5432 -U repmgr -R postgres -I -w 1000 standby clone {{ db_master }}
+  args:
+      creates: /var/lib/pgsql/9.3/data/recovery.conf
+  notify: register standby
+  become_user: postgres
+
+- name: start & enable repmgr
+  service: name=repmgr-9.3 state=started enabled=yes

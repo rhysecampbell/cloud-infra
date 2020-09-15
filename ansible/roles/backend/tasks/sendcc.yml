@@ -1,0 +1,33 @@
+---
+- name: config
+  copy: src=sendccconf/{{ item }}.conf dest=/etc/vaisala-config/do-sendcc/{{ item }}.conf
+  with_items:
+      - one
+      - two
+      - three
+      - four
+
+- name: processing script
+  copy: src=send_processed_xmls.sh dest=/usr/local/bin/send_processed_xmls.sh mode=0755
+
+- name: processing directories
+  file: path=/home/data/sendcc/quality/{{ item }} state=directory
+  with_items:
+      - one
+      - two
+      - three
+      - four
+
+- name: error directories
+  file: path=/home/data/sendcc/quality/error-{{ item }} state=directory
+  with_items:
+      - one
+      - two
+      - three
+      - four
+
+- name: cron send_processed_xmls.sh
+  cron: name="Send quality output to cloud" cron_file=ansible_send_processed_xmls user="root" job="/usr/local/bin/send_processed_xmls.sh >/dev/null 2>&1"
+
+- name: sendcc log cleanup
+  cron: name="sendcc log cleanup" cron_file=ansible_send_processed_xmls user="root" job="for i in one two three four; do mv -f /home/data/sendcc/quality/$i.log /home/data/sendcc/quality/$i.log.1; done" hour=23

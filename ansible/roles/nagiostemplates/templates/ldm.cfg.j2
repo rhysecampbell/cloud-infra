@@ -1,0 +1,47 @@
+# {{ ansible_managed }}
+{% if 'ldm' in groups %}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-ldm
+        alias			LDM Servers ({{ deployment_name }})
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-ldm
+	alias			LDM Checks ({{ deployment_name }})
+	}
+
+{% for host in groups['ldm'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+	address                 {{ ip }}
+{% endfor %}
+	hostgroups 		+{{ deployment_name }}-ldm
+}
+{% endfor %}
+
+define service{
+	use			{{ deployment_name }}-service
+	name			{{ deployment_name }}-nrpe-metar-queue
+        service_description     Metar Processing Queue
+        check_command           {{ deployment_name }}-check_nrpe!check_metar_xml_queue
+        display_name            Metar Processing Queue
+        servicegroups           {{ deployment_name }}-ldm
+        hostgroup_name          {{ deployment_name }}-ldm
+        }
+
+define service{
+	use			{{ deployment_name }}-service
+	name			{{ deployment_name }}-ldm-running
+        service_description     LDM
+        check_command           {{ deployment_name }}-check_nrpe!check_ldm
+        display_name            LDM
+        servicegroups           {{ deployment_name }}-ldm
+        hostgroup_name          {{ deployment_name }}-ldm
+        }
+
+
+{% endif %}

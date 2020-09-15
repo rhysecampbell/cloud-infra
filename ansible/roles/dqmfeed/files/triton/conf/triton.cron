@@ -1,0 +1,10 @@
+### Triton code ##
+# process obs
+3,13,23,33,43,53 * * * * /home/ldm/triton/scripts/tritonAPI-Obs.sh 2>>/tmp/triton.err >>/tmp/triton.log
+
+# process sysEvents
+7,17,27,37,47,57 * * * * /home/ldm/triton/scripts/tritonAPI-SE-lastTrack.pl 2>>/tmp/tritonSysevents.err >>/tmp/tritonSysevents.log
+
+
+# check for locations changes
+7 * * * * /home/ldm/triton/scripts/locationCheckChange.pl 2>>/tmp/tritonLocation.err >>/tmp/tritonLocation.log

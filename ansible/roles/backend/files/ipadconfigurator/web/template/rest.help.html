@@ -1,0 +1,71 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>iPad Configurator</title>
+	<link rel="Stylesheet" type="text/css" href="/css/cloudDB.css">
+	<link rel="Stylesheet" type="text/css" href="/css/jquery-ui-1.10.0.custom.css" />
+	<link rel="shortcut icon" type="image/vnd.microsoft.icon"  href="/images/vaisala.ico" />
+  <style type="text/css">
+    #helpText {
+      margin: 10px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+<div id="banner">
+<table>
+<tr>
+	<td>
+		<a class="link-vaisala-logo" href="http://www.vaisala.com/" title="Visit Vaisala" tabindex="1" accesskey="h">Vaisala</a>
+		<p>/ CloudDB iPad Configurator</p>
+	</td>
+</tr>
+</table>
+</div>
+<br/>
+
+<div id="helpText">
+<pre>
+Rest quick guide:
+
+/rest/v1.0
+   /get
+      /list
+        POST data: regionID, stationName, xmlName  
+      /listStationMap
+      /xmlName
+      /stationName
+      /regionID
+   /getSimple/<set SQL query>
+      Examples: 
+      /rest/v1.0/getSimple/stationNameSimple
+      /rest/v1.0/getSimple/xmlNameSimple
+      /rest/v1.0/getSimple/userListSimple
+   /user
+      /list/<given user id>
+      /listTable
+      /listSimple/<given user id>
+      /listRoles/<given user id>  (Used to return the user's roles)
+      /add  (Add a new user)
+        POST data: username, roles[], password, addedBy, description
+      /setRole (Set the user's roles)
+        POST data: username, roles[]
+      /setRoleProperties
+        POST data: roleID, metarData, ltgData
+      /setPassword  (Change the users's password)
+        POST data: username, password
+      /delete  (Delete the user with his given user ID)
+        POST data: userID
+</pre>
+
+
+<br />
+<br />
+<br />
+<br />
+"After Perl everything else is just assembly language."
+</div>
+
+[% INCLUDE footer.html %]

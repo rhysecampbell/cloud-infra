@@ -1,0 +1,24 @@
+# MSC for oracle sync'ing
+msc {
+  hscale = "2",
+  arcgradient = 10;
+
+  o [label="Oracle"],p [label="Process"],d [label="DQM"];
+
+  --- [ label = "Station metadata update" ];
+  p=>d [ label = "select xml_target_name from\nqm.station_identity\nwhere vmdb_id is NULL" ] ;
+  d>>p [ label = "xml_target_name's" ];
+  p=>o [ label = "Request station metadata for xml_target_name" ];
+  o>>p [ label = "station metadata" ];
+  p=>d [ label = "update qm.station_identity\nset lat,lon,vmdb_id,station_name" ];
+  ... ;
+  --- [ label = "Fetch vmdb_id's for existing regions" ];
+  p=>d [ label = "select v_region_name from station_alias_identity where vmdb_id is NULL"];
+  d>>p [ label = "v_region_name's" ];
+  p=>o [ label = "Request region metadata for v_region_name" ];
+  o>>p [ label = "region metadata" ];
+  p=>d [ label = "update qm.station_alias_identity\nset vmdb_id" ];
+  p=>d [ label = "select dqm_id\nfrom qm.station_identity\nwhere vmdb_id=vmdb_id" ];
+  d>>p [ label = "dqm_id" ];
+  p=>d [ label = "Insert (region dqm_id, station dqm_id)\ninto qm.station_alias\nwhere not exists"];
+}

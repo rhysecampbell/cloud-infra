@@ -1,0 +1,79 @@
+listen 80-http
+    bind *:80
+    http-request del-header Proxy
+    option forwardfor
+    option http-server-close
+    use_backend stats-admin if { url_beg /haproxy?admin }
+    use_backend admin if { hdr_beg(host) -i admin. }
+    capture request header X-Forwarded-For len 15
+
+backend admin
+    server localhost:8080 localhost:8080 check
+
+defaults
+    no log
+
+listen 30001-quality
+    bind *:30001
+{% for host in groups['backends'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:30000 {{ ip }}:30000 check
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+listen 40001-cloudServer
+    bind *:40001
+{% for host in groups['backends'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:40000 {{ ip }}:40000 check
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+listen 50001-metar-cloudServer
+    bind *:50001
+{% for host in groups['backends'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:50000 {{ ip }}:50000 check
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+listen 51001-madis-cloudServer
+    bind *:51001
+{% for host in groups['backends'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:51000 {{ ip }}:51000 check
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+listen 6544-postgres-write
+    bind *:6544
+    mode tcp
+    option httpchk
+{% for host in groups['corecluster'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:6543 {{ ip }}:6543 check port 45432
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+listen 6545-postgres-read
+    bind *:6545
+    mode tcp
+    option httpchk
+{% for host in groups['corecluster'] %}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+    server {{ hostvars[host].ansible_hostname }}:6543 {{ ip }}:6543 check port 45435
+{% endif %}
+{% endfor %}
+{% endfor %}
+

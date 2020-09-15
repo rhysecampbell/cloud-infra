@@ -1,0 +1,19 @@
+$def with (list, qttform,)
+<table border="1">
+<tr>
+  <td><b>vmdb_id:</b></td>
+  <td><b>qtt_id:</b></td>
+</tr>
+$for row in list
+  <tr>
+    <td><a href="http://192.168.32.67:8080/sensormonitor_primary/4.0/xsql/station.xsql?station_id=$row['vmdb_id']">$row['vmdb_id']</a></td>
+    <td>$row['qtt_id']</td>
+  <tr>
+</table>
+
+<h2>Add or delete QTT Ids:</h2>
+<form name="main" method="post">
+$if not qttform.valid: <p class="error">Try again, AmeriCAN:</p> 
+$:qttform.render()
+<input type="submit" />
+</form>

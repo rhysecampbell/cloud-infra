@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+
+import psycopg2
+
+def get_station_info(connectstring="dbname=cloud host=localhost port=5432 user=postgres password={{ postgres_password }}"):
+    conn = psycopg2.connect(connectstring)
+    curs = conn.cursor()
+    curs.execute("""SELECT si.xml_target_name, sai.v_region_name
+                    FROM oe.station_identity si, oe.station_alias_identity sai, oe.station_alias sa
+                    WHERE si.stn_id = sa.stn_id
+                    AND sa.v_region_id = sai.v_region_id
+                    ORDER BY v_region_name ASC, xml_target_name ASC""")
+    stationlist = curs.fetchall()
+    curs.close()
+    conn.close()
+    return stationlist
+
+def get_sensor_ids(xml_target_name, curs):
+    curs.execute("""SELECT sensor_id
+                    FROM sensor_identity se, station_identity sa
+                    WHERE se.station_id = sa.station_id
+                    AND sa.target_name = %(target_name)s
+                    AND ( symbol IN ('36', '51')
+                          OR symbol LIKE '%%SurfaceStatus.%%')""",
+                 {'target_name': xml_target_name})
+    return curs.fetchall()
+
+def update_qualmon_sensors(connectstring="dbname=qualmon host=localhost port=5432 user=postgres password={{ postgres_password }}"):
+    stationlist = get_station_info()
+    conn = psycopg2.connect(connectstring)
+    curs = conn.cursor()
+    for xml_target_name, v_region_name in stationlist:
+        sensors = get_sensor_ids(xml_target_name, curs)
+        for sensor in sensors:
+            checkfunc = "qm_surfstate(%i, '%s'" % (sensor[0], v_region_name)
+            curs.execute("""UPDATE sensor_identity
+                            SET remote_xcheck = %(checkfunc)s
+                            WHERE sensor_id = %(sensor_id)s""",
+                         {'checkfunc': checkfunc, 'sensor_id': sensor[0]})
+    curs.close()
+    conn.commit()
+    conn.close()
+
+
+
+if __name__ == "__main__":
+    update_qualmon_sensors()

@@ -1,0 +1,106 @@
+[% INCLUDE header.html %]
+<script id="source" language="javascript" type="text/javascript">
+$(document).ready(function() {
+	window.configInt = {};
+	window.configInt.cache = {
+		stationName:$("#stationName"),
+		stationID:$("#stationID"),
+		xmlName:$("#xmlName"),
+		regionID:$('#regionID'),
+		VirtualRegionID:$('#VirtualRegionID'),
+		submit:$('#searchSubmit'),
+		resultsDiv:$('#dbList'),
+	};
+	window.configInt.settings = {	
+		baseURL:'/rest/v1.0',
+	};
+
+	pagerTable('cloudList',25,[1,4,5,6,8,10,11],[9]);
+});
+</script>
+
+<div id="mainPage">
+	<noscript>
+		<div class="commonErrorMessages">
+			<p>You must enable JavaScript to use this application.</p>
+		</div>
+	</noscript>
+
+	
+	<div class="form-wrapper">
+		<div class="header">
+		<h1>RWIS Stations</h1>
+		</div>
+		<div id="release-version">
+		<div id="release-version-text">Version</div>
+		<div id="release-version-number">[% version %]</div>
+		</div>
+		<div class="plotBody">
+			Use the input boxes below to filter stations. Double click the table fields to modify values.
+		</div>
+	</div>
+</div>
+
+<div id="resultsTable">
+	<table class="tablesorter">
+		<thead>
+			<tr>
+				<td class="pager sorter-false" colspan="10">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+		</thead>
+		<tfoot>
+			<tr>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+				<th>&nbsp;</th>
+			</tr>
+			<tr>
+				<td class="pager" colspan="10">
+					<img src="/images/pager/first.png" class="first" alt="First" />
+					<img src="/images/pager/prev.png" class="prev" alt="Prev" />
+					<span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+					<img src="/images/pager/next.png" class="next" alt="Next" />
+					<img src="/images/pager/last.png" class="last" alt="Last" />
+					<select class="pagesize">
+						<option value="15">15</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+					</select>
+				</td>
+			</tr>
+		</tfoot>
+		<tbody>
+		</tbody>
+	</table>
+</div>
+[% INCLUDE footer.html %]

@@ -1,0 +1,37 @@
+listen 80-http
+    bind *:80
+    http-request del-header Proxy
+{% if letsencrypt %}
+    redirect scheme https code 301 if !{ ssl_fc } !{ path_beg /.well-known/ }
+    bind *:443 ssl no-sslv3 no-tls-tickets crt /var/lib/acme/haproxy/{{ ansible_nodename }} {% if extradomains is defined %}{% for domain in extradomains %} crt /var/lib/acme/haproxy/{{ domain }} {% endfor %}{% endif %}
+{% endif %}
+
+    option forwardfor
+    option http-server-close
+    redirect location /swagger/?url=/swagger.yaml if { path -i /swagger }
+    use_backend 5000-uwsgi if { url_beg /api }
+    use_backend 8080-httpd if { url_beg /swagger }
+    use_backend 8080-httpd if { url_beg /external.yaml } #FIXME: should remove this bodge
+    use_backend 8080-httpd if { url /git-revision }
+    use_backend 8080-httpd if { url_beg /error-scripts }
+    use_backend 8080-httpd if { url_beg /cgi-bin }
+    use_backend 5002-pg-py-webservice if { url_beg /export }
+    use_backend 5002-pg-py-webservice if { url_beg /datex2 }
+    use_backend 5002-pg-py-webservice if { url_beg /table }
+    use_backend 5002-pg-py-webservice if { url_beg /admin }
+    use_backend 5002-pg-py-webservice if { url_beg /jpglist.html }
+    use_backend letsencrypt if { path_beg -i /.well-known/acme-challenge/ }
+    capture request header X-Forwarded-For len 15
+
+backend 8080-httpd
+    server localhost:8080 localhost:8080 check
+
+backend 5000-uwsgi
+    compression algo gzip deflate
+    compression type text/html text/plain text/css text/javascript application/json
+    server localhost:5000 localhost:5000 check
+
+backend 5002-pg-py-webservice
+    compression algo gzip deflate
+    compression type text/html text/plain text/css text/javascript application/json
+    server localhost:5002 localhost:5002 check

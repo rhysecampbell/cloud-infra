@@ -1,0 +1,526 @@
+#!/usr/bin/perl
+
+use Time::Local;
+use File::Path qw(make_path remove_tree);
+use File::Find;
+use File::Copy;
+use DBI;
+require Weather::UGC;
+
+$ENV{PGUSER}='polywrite';
+$ENV{PGPASSWORD}='{{ postgres_users.polywrite.password }}';
+$ENV{PGDATABASE}='weatherzones';
+$ENV{PGPORT}='6544';
+
+
+$scriptsPath="/home/ldm/scripts";
+
+
+$donePath="$scriptsPath/done";
+
+# read in all the FIPS codes (for county/number translation) for "ssCnnn" type UGC values (county)
+open (FIPS,"$scriptsPath/fipsCodes.txt");
+while (<FIPS>) {
+	$_ =~ m/(\S{2})\s(\d{2})/;
+	$stateName=$1;
+	$stateNumber=$2;
+	$fips{$stateName} = $stateNumber;
+	}
+close FIPS;
+
+
+
+$path="/home/ldm/data";
+
+# get all the report paths and store in @allReports
+find sub{
+	push @allReports, "$File::Find::name" if (-f $File::Find::name);
+},$path;
+
+# sort by date, so reports expire properly
+@allReports = sort @allReports;
+
+# spin through each file and pluck out the individual reports
+foreach $file (@allReports) {
+	chomp $file;
+print "Working on file:  $file\n";
+
+$file =~ m/(\D{3}$)/;
+  $fileExtension=$1;
+  if ($fileExtension eq "HWO") {
+    $alertCategory="HWO";
+  }
+  elsif ($fileExtension eq "SPS") {
+    $alertCategory="SPS";
+  }
+  elsif ($fileExtension eq "HCW") {
+    $alertCategory="HCW";
+  }
+  elsif ($fileExtension eq "TWW") {
+    $alertCategory="TWW";
+  }
+  else {
+    $alertCategory="";
+  }
+
+
+# store everything from the file into an array, since I'll be looping through over and over
+open (DATA,"$file");
+@data=<DATA>;
+close DATA;
+
+# move that file to a processed/done directory
+move("$file","$donePath");
+
+# carve each report into a single string, each an element of array @reports
+$reportCount=1;
+foreach $line (@data) {
+ # get rid of bogus control characters and excessive spaces
+ $line =~ s/[^\040-\176]/ /g;
+ $line =~ s/      / /g;
+ $line =~ s/     / /g;
+ $line =~ s/    / /g;
+ $line =~ s/   / /g;
+ $line =~ s/  / /g;
+ $line =~ s/\&\&//g;
+ chomp $line;
+
+unless ($line =~ m/\$\$/) {	# the $$ marks the end of the report
+	if ($line =~ m/\S/) { $reports[$reportCount] = $reports[$reportCount] . "$line|"; }
+	}
+else {
+	$reportCount++;
+	}
+}
+
+
+# At this point, each element of @array should contain a report, "|" separated.
+
+# loop through all the reports in each file (should be $reportCount of them) to get all the values
+for ($reportNumber=1;$reportNumber<$reportCount;$reportNumber++) {
+
+$reports[$reportNumber] = "|" . $reports[$reportNumber];	# need to begin with | as well
+
+unless ($reports[$reportNumber] =~ m/\|\D{2}(C|Z)\d{3}.*\d{6}\-/) {	# if we don't have a UGC, we can't proceed with that report
+	print "NO UGC!  Punt report $reportNumber.\n";
+	next; }
+
+
+# @currentReport will be the current working report we're working on
+@currentReport = split(/\|/, $reports[$reportNumber]);
+
+# clear some counters/variables
+$currentReportLineCount=0;
+$line="";
+$state="";
+$countyCodeType="";
+$countyNumber="";
+$ugcString="";
+$foundUGCstart="";
+$ugcExp="";
+$ugcHash="";
+@ugcArray=();
+$actionCode="";
+$officeID="";
+$phenomenon="";
+$significance="";
+$eventTrackingNumber="";
+$begYear="";
+$begMonth="";
+$begDay="";
+$begHour="";
+$begMinute="";
+$expYear="";
+$expMonth="";
+$expDay="";
+$expHour="";
+$expMinute="";
+$begUtime="";
+$infoLine="";
+$latLonLine="";
+$latRowCount="";
+$currentReportLineCount="";
+$latLon="";
+@latLonArray=();
+$latLonPairCount="";
+$sqlString="";
+$ugcValue="";
+@sqlInsertCommand=();
+$ugcDay="";
+$ugcHour="";
+$ugcMin="";
+$ugcGuessTime="";
+$fileYear="";
+$fileMonth="";
+$fileDay="";
+$fileHour="";
+$fileExtension="";
+$currentTime="";
+$properTime="";
+$nextMonth="";
+$nextYear="";
+$vtec="";
+
+
+# get the UGC code out of current report, but make a private array copy first, since we might be changing as we parse
+@ugcTemp=@currentReport;
+@ugcArray=();
+
+foreach $line (@ugcTemp) {
+
+ # get rid of trailing spaces
+ $line =~ s/\s*$//g;
+
+ # get rid of text which ~might~ follow the UGC date
+ $line =~ s/(\d{6}\-).*/$1/;
+
+ chomp $line;
+
+
+# if UGC is only one line, get it and bail from loop
+if ($line =~ m/(^\D{2})(C|Z)(\d{3}).*\d{6}\-/) {
+        $state=$1;
+        $countyCodeType=$2;
+        $countyNumber=$3;
+        $ugcString=$line;
+        last;
+        }
+
+
+# if UGC exists, but the date isn't at the end, the following lines will need to be captured
+if ($line =~ m/(^\D{2})(C|Z)(\d{3})/) {
+        $state=$1;
+        $countyCodeType=$2;
+        $countyNumber=$3;
+        $ugcString=$line;
+        $foundUGCstart=1;
+        next;
+        }
+
+# if we have some UGC, and we find a line with the date, we have everything.
+if (($foundUGCstart) && ($line =~ m/\d{6}\-$/)) {
+        $foundUGCstart=0;
+        $ugcString = $ugcString . $line;
+        last;
+}
+
+# if we've gotten this far, and have a UGC, capture the line and keep looking
+if ($foundUGCstart) {
+        $ugcString = $ugcString . $line;
+        next;
+}
+}
+
+# get the expiration time
+$ugcString =~ m/(\d{6})\-$/;
+$ugcExp = $1;
+
+print "UGC is $ugcString\n";
+
+# parse the county/zones out of the UGC
+$ugcHash = new Weather::UGC($ugcString);
+@ugcArray = $ugcHash->zones;
+
+
+print "Array is @ugcArray\n";
+
+
+
+
+
+# find the various values in the report
+$currentReportLineCount=-1;
+foreach $line (@currentReport) {
+$currentReportLineCount++;
+
+# get rid of "'" characters since they hose the insert.
+$line =~ s/\'//g;
+
+# make \ and " into HTML entity names
+$line =~ s/\\/\&bsol\;/g;
+$line =~ s/\"/\&quot\;/g;
+
+
+ # find the various values contained in the report VTEC info line
+
+ if ($line =~ m/\/O\.(\S{3})\.(\S{4})\.(\S{2})\.(\S)\.(\S{4})\.(\d{2})(\d{2})(\d{2})T(\d{2})(\d{2})Z-(\d{2})(\d{2})(\d{2})T(\d{2})(\d{2})Z/) {
+  $actionCode=$1;
+
+  $vtec=$line;
+  chomp $vtec;
+
+  $officeID=$2;
+  $phenomenon=$3;
+  $significance=$4;
+  $eventTrackingNumber=$5;
+  $begYear=$6+2000;
+  $begMonth=$7;
+  $begDay=$8;
+  $begHour=$9;
+  $begMinute=$10;
+  $expYear=$11+2000;
+  $expMonth=$12;
+  $expDay=$13;
+  $expHour=$14;
+  $expMinute=$15;
+  if ($begMonth > 0) { $begUtime= timelocal(0,$begMinute,$begHour,$begDay,$begMonth-1,$begYear-1900); }# only grab this if it's not zero
+  if ($expMonth > 0) { $expUtime= timelocal(0,$expMinute,$expHour,$expDay,$expMonth-1,$expYear-1900); }# only grab this if it's not zero
+  $infoLine=$line;	# store the info line, then clear it from the report
+  $alertCategory=$phenomenon . $significance;
+  $line="";
+
+
+
+  next;
+
+
+
+ }
+
+ # find the LAT/LON poly info
+ if ($line =~ m/^LAT\.\.\.LON/) {
+  $latLonLine=$line;
+  $line="";
+ 
+# find all the lines containing LAT/LON info, and exit the while loop when done
+$latRowCount=0;
+while (1) {
+ $latRowCount++;
+
+ if ($currentReport[$currentReportLineCount+$latRowCount] =~ m/^\s*\d/) {
+
+   $latLonLine = $latLonLine . $currentReport[$currentReportLineCount+$latRowCount];
+   $currentReport[$currentReportLineCount+$latRowCount]="";
+   }
+ else {
+  $latRowCount=0;
+  last;
+ }
+}
+$latRowCount=0;
+
+
+ $latLonLine =~ m/LAT...LON ([\d*\s*\d*]*)/;
+ $latLon=$1;
+ $latLon =~ s/ +/ /g;
+ @latLonArray = split(/ /, $latLon);
+
+# swap the LAT/LON, make the LON negative, and devide by 100 to get the decimal
+for ($latLonPairCount=0;$latLonPairCount<@latLonArray;$latLonPairCount+=2) {
+ ($latLonArray[$latLonPairCount],$latLonArray[$latLonPairCount+1]) = (-$latLonArray[$latLonPairCount+1]/100,$latLonArray[$latLonPairCount]/100);
+}
+
+# copy the first pair to the end, to complete the polygon
+push (@latLonArray, $latLonArray[0]); 
+push (@latLonArray, $latLonArray[1]); 
+
+# insert the brackets and commas
+for ($latLonPairCount=0;$latLonPairCount<@latLonArray;$latLonPairCount+=2) {
+ $latLonArray[$latLonPairCount]="[$latLonArray[$latLonPairCount],";
+ $latLonArray[$latLonPairCount+1]="$latLonArray[$latLonPairCount+1]],";
+}
+
+# (and remove the "," from the last pair
+ $latLonArray[$latLonPairCount-1] =~ s/\,$//g;
+
+ }
+
+# get rid of "tracking" info in the report
+ if ($line =~ m/^TIME\.\.\.MOT\.\.\.LOC/) {
+	$line="";
+	if ($currentReport[$line+1] =~ m/\d{4} \d{4}/) {
+		$currentReport[$line+1] = "";
+		$currentReport[$line+2] = "";
+		}
+	}
+
+}
+
+# if we have LAT/LON info, use that.  Else, use the UGC county/zones
+
+if (@latLonArray) {
+ open (JSON, ">/tmp/json/POLY.$reportNumber.json");
+ print JSON "{ \"type\": \"Polygon\",\n";
+ print JSON "   \"coordinates\": [\n";
+ print JSON "     [\n";
+ print JSON "@latLonArray\n";
+ print JSON "     ]\n";
+ print JSON "   ]\n";
+ print JSON " }\n";
+ close JSON;
+
+}
+
+else {
+
+
+ if ($countyCodeType eq "Z") {
+	$sqlString = '';
+	foreach $ugcValue (@ugcArray) {
+		# get the Z out of the string
+		$ugcValue =~ s/(\S{2})Z(\d{3})/${1}${2}/g;
+		$sqlString = $sqlString . "'" . $ugcValue . "'" . ",";
+		}
+
+ # get rid of trailing ","
+ $sqlString =~ s/\,$//;
+
+
+
+`export PGUSER=polywrite; export PGPASSWORD={{ postgres_users.polywrite.password }}; export PGDATABASE=weatherzones; /usr/pgsql-9.3/bin/psql -h db.vaicld.com -p 6544 -d weatherzones -c "\\copy (select ST_Asgeojson(ST_Union(geom)) from static.nwspubliczones where state_zone in ( $sqlString )) to '/tmp/json/POLY.$reportNumber.json'"`;
+
+
+$zoneCheck1 = -s "/tmp/json/POLY.$reportNumber.json";
+if ($zoneCheck1 < 9) {
+	print "JSON is zero length.  Maybe it's a Red Flag (fire) alert!  Checking..\n";
+
+	`export PGUSER=polywrite; export PGPASSWORD={{ postgres_users.polywrite.password }}; export PGDATABASE=weatherzones; /usr/pgsql-9.3/bin/psql -h db.vaicld.com -p 6544 -d weatherzones -c "\\copy (select ST_Asgeojson(ST_Union(geom)) from static.nwsfirezones where state_zone in ( $sqlString )) to '/tmp/json/POLY.$reportNumber.json'"`;
+
+
+	$zoneCheck2 = -s "/tmp/json/POLY.$reportNumber.json";
+	if ($zoneCheck2 < 9) {
+		print "JSON is still zero length.  Not a Red Flag (fire) alert!  Checking other stuff..\n";
+		}
+
+	}
+ }
+
+ if ($countyCodeType eq "C") {
+	$sqlString = '';
+	foreach $ugcValue (@ugcArray) {
+		# get the C out of the string
+		$ugcValue =~ s/(\S{2})C(\d{3})/${1}${2}/g;
+		$sqlString = $sqlString . "'" . $fips{$1} . $2 . "'" . ",";
+		}
+
+ # get rid of trailing ","
+ $sqlString =~ s/\,$//;
+
+
+`export PGUSER=polywrite; export PGPASSWORD={{ postgres_users.polywrite.password }}; export PGDATABASE=weatherzones; /usr/pgsql-9.3/bin/psql -h db.vaicld.com -p 6544 -d weatherzones -c "\\copy (select ST_Asgeojson(ST_Union(geom)) from static.uscounties where fips in ( $sqlString )) to '/tmp/json/POLY.$reportNumber.json'"`;
+
+ }
+
+
+}
+
+$jsonFileSize = -s "/tmp/json/POLY.$reportNumber.json";
+if ($jsonFileSize < 9) {
+	print "JSON is zero length.  Moving on!\n";
+	next;
+	}
+
+
+# Take the JSON we just built and make shape files
+`ogr2ogr -f "ESRI Shapefile" /tmp/json/POLY.$reportNumber.shp "/tmp/json/POLY.$reportNumber.json" -t_srs EPSG:4326`;
+@sqlInsertCommand=`shp2pgsql /tmp/json/POLY.$reportNumber.shp dynamic.nwsalerts`;
+
+
+$expUtime=$expUtime+0;	#needs to be a digit
+
+# determine the proper time stamp
+&timestamp;
+$expUtime = $properTime;
+
+
+# strip the date off the UGC since it isn't part of the zone itself, to keep the most recent alert only
+$ugcString =~ s/\-\d{6}\-$//g;
+
+
+shift (@currentReport);
+
+foreach $entry (@currentReport) {
+ 	$entry =~ s/\s*$//g;
+ 	$entry =~ s/^\s*//g;
+	if (($entry =~ m/$ugcstring/) && ($ugcstring =~ m/\d/)) {
+		$entry="";
+		}
+	if ($entry =~ m/^[A-Z]{6}$/) {
+		$entry="";
+		}
+}	
+
+
+
+
+
+# get rid of an older or duplicate alert
+  my $dbh = DBI->connect("DBI:Pg:dbname=weatherzones;host=db.vaicld.com;port=6544", "polywrite", "{{ postgres_users.polywrite.password }}", {'RaiseError' => 1});
+  my $sth = $dbh->prepare("delete from dynamic.nwsalerts where text = '@currentReport'");
+  my $sth = $dbh->prepare("delete from dynamic.nwsalerts where ugcstring = '$ugcString' and alertcategory = '$alertCategory'");
+  $sth->execute();
+  $dbh->disconnect();
+
+print "Using alert Category: $alertCategory in file: $file\n";
+
+ # add the extra sql fields
+ $sqlInsertCommand[7] =~ s/\"fid\",geom/alertstate,exptime,text,alertcategory,ugcstring,vtec,\"fid\",geom/;
+ $sqlInsertCommand[7] =~ s/VALUES \(/VALUES \(\'$actionCode\', \'$expUtime\', \'@currentReport\', \'$alertCategory\', \'$ugcString\', \'$vtec\', /;
+
+ open (SQLCOMMAND, ">/tmp/json/POLY.$reportNumber.sql");
+ print SQLCOMMAND $sqlInsertCommand[7];
+ close SQLCOMMAND;
+
+print "Opening psql for writing /tmp/json/POLY.$reportNumber.sql!\n\n";
+
+$ENV{PGUSER}='polywrite';
+$ENV{PGPASSWORD}='{{ postgres_users.polywrite.password }}';
+$ENV{PGDATABASE}='weatherzones';
+$ENV{PGPORT}='6544';
+
+# insert the polys into db
+
+$sqlFile="/tmp/json/POLY.$reportNumber.sql";
+$dbh = DBI->connect("DBI:Pg:dbname=weatherzones;host=db.vaicld.com;port=6544", "polywrite", "{{ postgres_users.polywrite.password }}", {'RaiseError' => 1});
+open (SQL, "$sqlFile");
+while ($sqlStatement = <SQL>) {
+ $sth = $dbh->prepare($sqlStatement);
+ $sth->execute();
+}
+$dbh->disconnect();
+
+
+  @currentReport=();
+  @latLonArray=();
+
+  $actionCode="";
+  $expUtime="";
+ }
+
+@reports=();
+
+# clean up temp directory
+`rm -f /tmp/json/*`;
+
+}
+
+sub timestamp {
+	$currentTime=time;
+	$nextMonthTime=$currentTime+1814400;	#3 weeks out, should be next month by then, if we're at the end of the month.
+
+	$file =~ m/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;	# get the date values from the filename
+	$fileYear=$1;
+	$fileMonth=$2;
+	$fileDay=$3;
+	$fileHour=$4;
+	$fileMin=$5;
+	$fileSec=$6;
+	$fileExtension=$7;
+
+	$ugcExp =~ m/(\d{2})(\d{2})(\d{2})/;	# get the date values from the UGC code
+		$ugcDay=$1;
+		$ugcHour=$2;
+		$ugcMin=$3;
+						# make a guess for the ugc full time using filename values
+		$ugcGuessTime = timelocal(0,$ugcMin,$ugcHour,$ugcDay,$fileMonth-1,$fileYear-1900);
+
+
+	if (($ugcGuessTime > $currentTime) || ($currentTime-$ugcGuessTime < 43200)) { # if UGC guess is in the future, or within 12 hours in the past, the UGC guess is accurate
+		$properTime = $ugcGuessTime;
+		}
+	else {		# else, use next month's month and year values since the guess should be about a month old, and incorrect
+		($nextSec, $nextMin, $nextHour, $nextDay, $nextMonth, $nextYear, $nextWday, $nextYday, $nextIsdst) = localtime($nextMonthTime);
+		$properTime = timelocal(0,$ugcMin,$ugcHour,$ugcDay,$nextMonth,$nextYear);
+		}
+
+}

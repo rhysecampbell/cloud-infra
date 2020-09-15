@@ -1,0 +1,8 @@
+---
+- include: postgres.yml
+- include: oracle-sync.yml
+  tags: oracle-sync
+
+- include: triton-meta.yml
+  tags: triton-meta
+  when: triton_meta is defined and triton_meta

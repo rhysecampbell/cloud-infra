@@ -1,0 +1,4 @@
+---
+logstreams:
+  - streamname: "DQM_Log"
+    logfile: "/var/log/simpleserver/DQM.log.io"

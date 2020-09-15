@@ -1,0 +1,16 @@
+- name: Install httpd
+  yum: name=httpd state=present
+
+- name: install httpd.conf
+  copy: src=httpd.conf dest=/etc/httpd/conf/httpd.conf owner=root group=root mode=0644
+  notify: restart httpd
+
+- name: disable httpd ssl
+  file: path=/etc/httpd/conf.d/ssl.conf state=absent
+  notify: restart httpd
+
+- name: Start httpd
+  service: name=httpd state=started enabled=yes
+
+- name: Copy external swagger .yaml
+  copy: src=external.yaml dest=/var/www/html/external.yaml

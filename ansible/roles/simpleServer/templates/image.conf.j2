@@ -1,0 +1,101 @@
+################################################################################
+# configuration file for postgresql 'simpleServer' web service                 #
+# currently supporting:                                                        # 
+# imageDB                                                                      #                 
+# trafficDB                                                                    #
+# this file MUST reside in the </etc/vaisala-config/do-simserver> directory    #
+# BJT August 2012                                                              #
+################################################################################
+
+#########################################
+# debuglevels may be defined as text    #
+# OFF ERROR WARNING NOTICE INFO DEBUG   #
+# 0     1     2       3     4    5      #
+#########################################
+
+DebugLevel = WARNING 
+LogToFile = yes
+LogFilePath = /var/log/simpleserver/image
+
+ServerPort = 50000
+
+SendTimeout = 60
+ReceiveTimeout = 60
+AcceptTimeout = 0
+MaxKeepAlive = 100
+
+##########################
+# Use gzip compression in the 
+# response message if the calling
+# client supports it.
+
+CompressOutputMessage = yes
+
+#################################
+
+##########################
+
+# insert all values from a resultOf as a
+# single transaction. This will speed up
+# the insert process a great deal but
+# will rollback the complete set on error.
+
+BatchInsertMode = yes
+
+##########################
+
+# Setting InsertIntoDatabase to <no>
+# will prevent all database operations and also
+# stop image resizing / thumbnail creation
+
+InsertIntoDatabase = no
+
+##########################
+# Strip out any ResultOf with Traffic Counting
+# codespaces and save the stripped file for
+# further processing.
+
+SaveStrippedFiles = no
+StrippedXMLOutputPath = /home/data/cloud/stripped
+
+##########################
+
+SaveXMLToFile = {{ SaveXMLToFile | default("no") }}
+XMLOutputPath = /var/local/image/
+
+
+# image schema type ############################
+
+dbSchema = cloudDB 
+Base64Encode = yes
+
+SaveImagesToFile = no
+SaveStaticImages = yes
+# ImageOutputPath = /home/data/image/images
+ImageOutputPath = /var/www/html/images
+
+ImageQuality = 60
+
+ReFormatImage = yes
+ImageVerticalSize = 480
+ImageHorizontalSize = 640
+
+CreateThumbnailImage = yes
+ThumbVerticalSize = 200
+ThumbHorizontalSize = 300
+
+CreateIconImage = yes
+IconVerticalSize = 80
+IconHorizontalSize = 120
+##############################################
+
+
+# postgres or pg_bouncer port
+# PostgresPort = 5432
+PostgresPort = 6543
+# PostgresServerAddr = 46.137.154.22
+
+PostgresServerAddr = localhost
+PostgresDBName = cloud
+PostgresUser = vaisala
+PostgresPassword = vaisala

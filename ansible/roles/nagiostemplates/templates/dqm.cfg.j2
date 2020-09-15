@@ -1,0 +1,166 @@
+# {{ ansible_managed }}
+{% if 'dqmdb' in groups %}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-dqm
+        alias			DQM ({{ deployment_name }})
+	hostgroup_members	{{ deployment_name }}-dqm-web
+	}
+
+define servicegroup{
+	servicegroup_name	{{ deployment_name }}-dqm
+	alias			DQM ({{ deployment_name }})
+	}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-dqm-web
+	alias			DQM Web Servers ({{ deployment_name }})
+	}
+
+define hostgroup {
+	hostgroup_name		{{ deployment_name }}-dqm-proc
+	alias			DQM Processing Servers ({{ deployment_name }})
+	}
+
+{% for host in groups['dqmdb'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	hostgroups		+{{ deployment_name }}-databases
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	}
+{% endfor %}
+{% endif %}
+
+{% if 'dqmimagedb' in groups %}
+{% for host in groups['dqmimagedb'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	hostgroups		+{{ deployment_name }}-databases
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	}
+{% endfor %}
+{% endif %}
+
+{% if 'dqmimagedb' in groups or 'dqmdb' in groups %}
+define service{
+        use                     {{ deployment_name }}-nrpe-disk
+        service_description     /mnt/data
+        check_command           {{ deployment_name }}-check_nrpe!check_mntdata
+        display_name            /mnt/data
+        hostgroups              {{ deployment_name }}-databases
+        }
+
+define service{
+        use                     {{ deployment_name }}-nrpe-disk
+        service_description     /mnt/archive/current
+        check_command           {{ deployment_name }}-check_nrpe!check_mntarchive
+        display_name            /mnt/archive/current
+        hostgroups              {{ deployment_name }}-databases
+        }
+{% endif %}
+
+{% if 'dqmweb' in groups %}
+{% for host in groups['dqmweb'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	hostgroups		+{{ deployment_name }}-dqm-web
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	}
+{% endfor %}
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     DQM App Version
+{% if letsencrypt %}
+        check_command           check_http! -S -u /dqmapp/services/v{{ dqm_major }}/general/version -s '"specVersion":"{{ dqm_version }}"' -a dqmuser:v@1sAlA
+{% else %}
+        check_command           check_http! -u /dqmapp/services/v{{ dqm_major }}/general/version -s '"specVersion":"{{ dqm_version }}"' -a dqmuser:v@1sAlA
+{% endif %}
+        display_name            DQM App Version
+        hostgroup_name          {{ deployment_name }}-dqm-web
+        normal_check_interval   1
+        }
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     DQM Web login
+{% if letsencrypt %}
+        check_command           check_http! -S -u /dqmweb/login -P "username=dqm_test&password=aGpX2cmKsM" -e 302
+{% else %}
+        check_command           check_http! -u /dqmweb/login -P "username=dqm_test&password=aGpX2cmKsM" -e 302
+{% endif %}
+        display_name            DQM Web login
+        hostgroup_name          {{ deployment_name }}-dqm-web
+        normal_check_interval   1
+        }
+
+{% endif %}
+
+{% if 'dqmprocessor' in groups %}
+{% for host in groups['dqmprocessor'] %}
+define host {
+	use                     {{ deployment_name }}-server
+	host_name               {{ host }} 
+	alias                   {{ host }}
+{% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+{% if ip != db_float %}
+	address                 {{ ip }}
+{% endif %}
+{% endfor %}
+	hostgroups		+{{ deployment_name }}-dqm-proc
+	}
+{% endfor %}
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     HTTP-5000
+        check_command           check_http!-a demo:demovai -p 5000 -u /api/nagios-test -s nagios-test
+        display_name            HTTP-5000
+        hostgroup_name          {{ deployment_name }}-dqm-proc
+        normal_check_interval   1
+        }
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     30001-dqmServer
+        check_command           check_http!-p 30001 -e "405 Method Not Allowed"
+        display_name            30001-dqmServer
+        hostgroup_name          {{ deployment_name }}-dqm-proc
+        }
+
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     40001-imageServer
+        check_command           check_http!-p 40001 -e "405 Method Not Allowed"
+        display_name            40001-imageServer
+        hostgroup_name          {{ deployment_name }}-dqm-proc
+        }
+{% endif %}
+
+{% if letsencrypt and ('dqmprocessor' in groups or 'dqmweb' in groups) %}
+define service{
+        use                     {{ deployment_name }}-service
+        service_description     HTTPS Certificate
+        check_command           check_http! -C 30,14
+        display_name            HTTPS Certificate
+        hostgroup_name          {{ deployment_name }}-dqm-web,{{ deployment_name }}-dqm-proc
+        }
+{% endif %}

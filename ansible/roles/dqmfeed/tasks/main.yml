@@ -1,0 +1,94 @@
+---
+- name: Install putgeo
+  copy: src=putgeo dest=/usr/local/bin/putgeo mode=0755
+  notify: restart putgeo
+
+- name: configdirs
+  file: path=/etc/vaisala-config/do-{{ item }}/ state=directory
+  with_items:
+    - putgeo
+
+- name: logdir
+  file: path=/var/log/dqm state=directory
+
+- name: install putgeo config file
+  template: src=putgeo.conf.j2 dest=/etc/vaisala-config/do-putgeo/putgeo.conf
+  notify: restart putgeo
+
+- name: Install init scripts
+  template: src={{ item }}.init.j2 dest=/etc/init.d/{{ item }} mode=0751
+  with_items:
+    - putgeo
+
+- name: Start & enable services
+  service: name={{ item }} enabled=yes state=started
+  with_items:
+    - putgeo
+
+- name: Stop old services
+  service: name={{ item }} enabled=yes state=stopped
+  with_items:
+    - dqmdatafeed
+    - dqmimagefeed
+    - dqmimagefeed-legacy
+  failed_when: False
+
+- name: cron subscription request
+  cron: name="{{ item.feed }} duplicator subscription"
+        cron_file=ansible_duplicator_subscription
+        user=root
+        job="curl -L http://duplicator:4001/v2/keys/queues/{{ item.feed }}/{{ db_float }} -XPUT -d value={{ item.port }} -d ttl=600 >/dev/null 2>&1"
+  when: duplicator is defined
+  with_items:
+        - feed: rwis
+          port: 30001
+        - feed: image
+          port: 40001
+
+- name: Install haproxy config
+  template: src=haproxy.cfg.j2 dest=/etc/haproxy/conf.d/dqmfeed.cfg
+  notify: merge haproxy config
+  tags: 
+      - letsencrypt
+      - error-scripts
+
+- include: iptables.yml
+
+- include: httpd.yml
+
+- include: uwsgi.yml
+
+- include: uwsgi-pg-py-webservice.yml
+  tags: exportdb
+
+- name: Cron dqm log cleanup
+  cron: cron_file=ansible_dqm_cleanup
+        user=root
+        name="Cleanup old logfiles"
+        special_time=daily
+        job="find /var/log/dqm/ -type f -mtime +7 -delete >/dev/null 2>&1"
+
+- include: error-scripts.yml
+  tags: error-scripts
+
+- name: Check for log.io file existing
+  stat: path=/var/log/simpleserver/DQM.log.io
+  register: st
+  tags: log.io
+
+- name: First log.io creation
+  shell: "ln -sf /var/log/simpleserver/dqm_$(date +%Y-%m-%d).log /var/log/simpleserver/DQM.log.io"
+  when: st.islnk is not defined or st.islnk == False
+  tags: log.io
+
+- name: Cron log.io file
+  cron: cron_file=ansible_log.io
+        user=root
+        name="Link latest log.io dqm log"
+        special_time=daily
+        job="ln -sf /var/log/simpleserver/dqm_$(date +\%Y-\%m-\%d).log /var/log/simpleserver/DQM.log.io && /sbin/service log.io-harvester restart"
+  tags: log.io
+
+- include: triton.yml
+  tags: triton
+  when: triton_password is defined

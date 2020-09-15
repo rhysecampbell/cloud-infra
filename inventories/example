@@ -1,0 +1,78 @@
+###############
+##           ##
+## Host list ##
+##           ##
+###############
+# One line per host.
+# Include them again in each appropriate groups below.
+www1.vaicld.com
+www2.vaicld.com
+db1.vaicld.com
+db2.vaicld.com
+panopticon.vaicld.com
+
+
+
+############
+##        ##
+## Groups ##
+##        ##
+############
+# Add the hosts listed above to the appropriate groups below.
+# There are currently two main sets of servers, iPad & DQM.
+# Generally you want at least one server listed in each group, though some may be deployable on their own.
+
+##
+## iPad servers
+##
+
+# iPad frontend web servers.
+# You can have as many as you want, but currently no load balancing is set up. Use something like a Rackspace Load Balancer in front.
+[frontends]
+www1.vaicld.com
+www2.vaicld.com
+
+# iPad backend servers. 
+# Don't enable more than 2, currently set up to use unicast vrrp to work within rackspace.
+[backends]
+db1.vaicld.com
+db2.vaicld.com
+
+# The master database server. Only 1.
+[corecluster_master]
+db1.vaicld.com
+
+# Any slave database servers. As many as you fancy.
+[corecluster_slave]
+db2.vaicld.com
+
+##
+## DQM servers
+##
+
+# Main Obs database
+[dqmdb]
+
+# Image database
+[dqmimagedb]
+
+# User frontend
+[dqmweb]
+
+# API frontend
+[dqmprocessor]
+
+##
+## Common Servers
+##
+
+# Nagios/ELK server(s) which will monitor & collect logs.
+[monitoring]
+
+# Used by swapdisks_db_machine.yml when swapping Rackspace Block Storage Devices
+[dangerwillrobinson]
+
+# Don't change this...
+[corecluster:children]
+corecluster_master
+corecluster_slave

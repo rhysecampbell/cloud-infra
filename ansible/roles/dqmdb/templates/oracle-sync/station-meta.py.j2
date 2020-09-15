@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+
+import sys
+import psycopg2
+import psycopg2.extensions
+import getpass
+import socket
+import logging
+
+from suds import WebFault
+from suds.client import Client
+from urllib2 import URLError
+from time import sleep
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.getLogger('suds.client').disabled = True
+
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+
+client = Client("http://80.194.88.7:8080/RdsVisualisationV3Service/RdsVisualisationV3?wsdl")
+username = '{{ sm_username }}'
+password =  '{{ sm_password }}'
+
+conn = psycopg2.connect("host=localhost dbname=qualmon2 user=postgres password={{ postgres_password }}")
+
+sessionid = None
+
+cur = conn.cursor()
+cur2 = conn.cursor()
+
+cur.execute("SELECT xml_target_name from qm.station_identity WHERE vmdb_id is NULL")
+
+class MaxAttemptsException(Exception):
+    pass
+
+def api_request(function, parameters=None, attempt=1):
+    global sessionid
+    if not sessionid:
+        sessionid = client.service.logon(username, password)
+        logging.info("sessionid is %s" % sessionid)
+    if attempt > 3:
+        logging.error("Failed 3 times... giving up.")
+        raise MaxAttemptsException
+    try:
+        return function(sessionid, parameters)
+    except WebFault, e:
+        if str(e) == "Server raised fault: 'Invalid sessionId, or sessionId has timed out'":
+            logging.warning("!!! Invalidating sessionid !!!")
+            sessionid = None
+            return api_request(function, parameters, attempt+1)
+        else:
+            raise e
+    except URLError, e:
+        if isinstance(e.reason, socket.timeout):
+            logging.info("Timed out, sleeping 10...")
+            sleep(10)
+            return api_request(function, parameters, attempt+1)
+        else:
+            raise e
+    except socket.timeout, e:
+        logging.info("Timed out, sleeping 10...")
+        sleep(10)
+        return api_request(function, parameters, attempt+1)
+
+
+for xml_target_name, in cur:
+    try:
+        meta = api_request(client.service.getStationGroupMetaDataForTarget, {'idType': 'stationAlias','id': xml_target_name})
+    except WebFault, e:
+        if str(e) == "Server raised fault: 'Resolved Target is null'":
+            if xml_target_name.isalnum():
+                try:
+                    meta = api_request(client.service.getStationGroupMetaDataForTarget, {'idType': 'hardwareSerialNumber','id': xml_target_name})
+                except WebFault, e:
+                    if str(e) == "Server raised fault: 'Resolved Target is null'":
+                        logging.info("Not found: %s" % xml_target_name)
+                    else:
+                        logging.info("%s: %s" % (e, xml_target_name))
+            else:
+                logging.info("Not found: %s" % xml_target_name)
+        else:
+            logging.info("%s: %s" % ( e, xml_target_name))
+        continue
+    vmdb_id = meta.organisationInstance[0].station[0]._id
+    lat, lon, alt, station_name = None, None, None, None
+    try:
+        lon = meta.organisationInstance[0].station[0].geoPosition._x
+        lat = meta.organisationInstance[0].station[0].geoPosition._y
+        alt = meta.organisationInstance[0].station[0].geoPosition._z
+        station_name = meta.organisationInstance[0].station[0].name
+    except AttributeError:
+        pass
+    logging.info("Updating: %s %s" % (xml_target_name, vmdb_id))
+    cur2.execute("""UPDATE qm.station_identity
+                       SET vmdb_id=%s
+                     WHERE xml_target_name=%s
+                       AND vmdb_id IS NULL""",
+                 (vmdb_id, xml_target_name))
+    cur2.execute("""UPDATE qm.station_identity
+                       SET lat=%s,
+                           lon=%s,
+                           alt=%s
+                         WHERE xml_target_name=%s
+                           AND lat IS NULL
+                           AND lon IS NULL
+                           AND alt IS NULL""",
+                     (lat, lon, alt, xml_target_name))
+    cur2.execute("""UPDATE qm.station_identity
+                       SET station_name=%s
+                     WHERE xml_target_name=%s
+                       AND station_name IS NULL""",
+                 (station_name, xml_target_name))
+    conn.commit()
+
+logging.info("phase 2...")
+
+cur.execute("SELECT v_region_name, vmdb_id as region_vmdb_id, v_region_id as region_dqm_id from qm.station_alias_identity")
+for v_region_name, region_vmdb_id, region_dqm_id in cur:
+    logging.info("Station association: %s ( %s / %s )" % (v_region_name, region_vmdb_id, region_dqm_id))
+    try:
+        stations = api_request(client.service.getStationGroupMetaDataForTarget, {'idType': 'regionFullName', 'id': v_region_name})
+    except WebFault, e:
+        logging.error("%s: %s" % (e, v_region_name))
+        continue
+    if region_vmdb_id is None:
+        region_vmdb_id = stations.organisationInstance[0].organisation._id
+        cur2.execute("""UPDATE qm.station_alias_identity
+                           SET vmdb_id=%s
+                         WHERE v_region_name=%s""", (region_vmdb_id, v_region_name))
+        logging.info("region_vmdb_id set: %s ( %s )" % (v_region_name, region_vmdb_id))
+    for station in getattr(stations.organisationInstance[0], 'station', []):
+        station_vmdb_id = station._id
+        cur2.execute("""SELECT stn_id as dqm_id
+                        FROM qm.station_identity
+                        WHERE vmdb_id = %s""", (station_vmdb_id,))
+        try:
+            station_dqm_id = cur2.fetchone()[0]
+        except TypeError:
+            continue
+        cur2.execute("""SELECT count(*) FROM qm.station_alias
+                        WHERE v_region_id=%s
+                          AND stn_id=%s""", (region_dqm_id, station_dqm_id))
+        if cur2.fetchone()[0]:
+            continue
+        cur2.execute("""INSERT INTO qm.station_alias (v_region_id, stn_id, comments)
+                        VALUES(%s, %s, %s)""", (region_dqm_id, station_dqm_id, "station-meta.py"))
+        logging.info("Inserted: %s %s" % (region_dqm_id, station_dqm_id))
+    conn.commit()
+cur.close()
+cur2.close()
+conn.close()
+logging.info("Sync completed")

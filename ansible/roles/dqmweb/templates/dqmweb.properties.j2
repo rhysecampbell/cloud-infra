@@ -1,0 +1,21 @@
+#
+# properties for the DQM web application
+# all based on TEST instance
+#
+
+## REST service
+## NOTE: version is required
+dqmapp.service.url=http://localhost:8080/dqmapp/services/v{{ dqm_major }}/
+dqmapp.service.uid=dqmuser
+dqmapp.service.pwd=v@1sAlA
+
+# image service
+{% if 'dqmprocessor' in groups %}
+{% for ip in hostvars[groups['dqmprocessor'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+dqmimage.service.url=http://{{ ip }}/api/v1/dqmImage/
+{% endfor %}
+{% endif %}
+config.admin.logs.errors={{ "https" if letsencrypt else "http" }}://logview:{{ logview_password }}@proc1.{{ domain }}/error-scripts/errorLogs/
+config.admin.logs.errors.site={{ "https" if letsencrypt else "http" }}://logview:{{ logview_password }}@proc1.{{ domain }}/error-scripts/errorsBySite/
+config.admin.logs.logstream={{ "https" if letsencrypt else "http" }}://logview:{{ logview_password }}@proc1.{{ domain }}/cgi-bin/error-cgi/logview.cgi
+config.admin.logs.logstream.plus.plus={{ "https" if letsencrypt else "http" }}://logview:{{ logview_password }}@proc1.{{ domain }}:38080/#

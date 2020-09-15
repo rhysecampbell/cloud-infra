@@ -1,0 +1,711 @@
+#!/usr/bin/perl
+
+# 2015.01.14  - updated code to accommodate new filename structure of GFS files - JESP
+#   old
+#     http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/gfs.2015011312/gfs.t12z.pgrb2f06
+#
+#   new
+#     http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/para/gfs.2015011312/gfs.t12z.pgrb2.0p50.f006
+#
+
+use IO::Handle;
+use DBI;
+use Math::Trig;
+use Time::Local;
+use Temperature::Windchill qw/ windchill_us windchill_si /;
+
+@twodigit = ("00" .. "99");
+@threedigit = ("000" .. "999");
+
+$path="/home/data/grib2obs/GRIB";
+
+$e=2.7182818284590452353602874713527;				#euler #
+
+# Called buildMSO.ksh, with 2 arguments:  YYYYMMDDRR I
+# YYYYMMDDRR = date+run, I = Instance
+# (I-Instance is # of simultaneous processes to run)
+
+# the date in the filename, as well as the run
+$datadate=$ARGV[0];
+chomp $datadate;
+
+# the instance #
+$instance=$ARGV[1];
+chomp $instance;
+
+
+# check if we have valid input
+unless ($datadate > 2015000000) {
+	print "Invalid date\n\n";
+	exit;
+}	
+
+unless ($instance > 0) {
+	print "Invalid instance\n\n";
+	exit;
+}	
+
+# certain sites require FTC values for cloud data.  Load in from file, and checked later to determine the type of data for the MSO
+open (FTCSITES,"$path/FTC-sites.txt");
+while (<FTCSITES>) {
+        chomp $_;
+        $ftcsite{$_}=1;
+        }
+
+
+# write a file for each instance to indicate instances are running
+open (RUNNING,">$path/build-running/$instance.running");
+print RUNNING "Instance $instance is running\n";
+close RUNNING;
+
+
+# parse out the Year, Month, Day, and run hour for the current run
+$datadate =~ m/(\d{4})(\d{2})(\d{2})(\d{2})/;
+$year=$1;
+
+$month=		$twodigit[$2];
+$day=		$twodigit[$3];
+$runHour=	$twodigit[$4];
+
+# keep a copy of these values for the xml headers
+$scheduledYear=		$year;
+$scheduledMonth=	$month;
+$scheduledDay=		$day;
+
+# fixed values for minutes and seconds is zero
+$min="00";
+$sec="00";
+
+# get the epoc value of the timestamp name of the file	
+$runTimestamp = timelocal($sec,$min,$runHour,$day,$month-1,$year-1900);
+
+
+# read in the sites info from the database directly
+my $dbh = DBI->connect("DBI:Pg:dbname=cloud;host=db.vaicld.com;port=6545", "frontend", "{{ postgres_users.frontend.password }}", {'RaiseError' => 1});
+
+
+my $sth = $dbh->prepare("SELECT si.lat,si.lon,si.xml_target_name from oe.station_identity si, oe.station_alias sa,oe.station_alias_identity sai where si.stn_id = sa.stn_id and sa.v_region_id = sai.v_region_id and (si.country_id != 'GB' or si.country_id IS NULL) and si.lat IS NOT NULL and si.lon IS NOT NULL group by si.xml_target_name,si.lat, si.lon");
+
+
+$sth->execute();
+
+while(my $ref = $sth->fetchrow_hashref()) {
+	push (@sitesUnsorted,"$ref->{'xml_target_name'},$ref->{'lat'},$ref->{'lon'}\n");
+	}
+$dbh->disconnect();
+
+#NEW China
+push (@sitesUnsorted,"BJTDJA_MXQ,39.9775,116.2222685"); 
+
+
+# unique sort the array
+undef %saw;
+@sites = grep(!$saw{$_}++, @sitesUnsorted);
+
+# loop through each forecast file, determinte the time, site, lat, lon, starting at 6 and groing through 78 for a total of 25 files
+# The $file variable is built with a loop, and used to access the CSV file by the same name
+
+for ($forecastHour=6;$forecastHour<=78;$forecastHour+=3) {
+	$forecastHour=	$threedigit[$forecastHour];
+	$file="gfs.t${runHour}z.pgrb2.0p50.f${forecastHour}";
+
+
+
+
+	# example entry in CSV file
+	# "2014-05-05 12:00:00","2014-05-06 21:00:00","TMP","2 m above ground",0,-90,218.1
+
+	# extract the values from the CSV file, and assign to their own associative arrays with lon/lat as the key
+	open (CSVDATA,"$path/$datadate.trimmedASCII/$file");
+	while (<CSVDATA>) {
+		(/[^\,]*,[^\,]*,\"(.*)\",\"(.*)\",([^\,]*),([^\,]*),([^\,]*)/);
+		$type1=$1;
+		$type2=$2;
+		$lon=$3;
+		$lat=$4;
+		$val=$5;
+
+		if (($type1 eq "TMP" ) && ($type2 eq "2 m above ground" )) {$tmp{"$lon,$lat"}=$val;}
+		if (($type1 eq "RH" ) && ($type2 eq "2 m above ground" )) {$rh{"$lon,$lat"}=$val;}
+
+		if (($type1 eq "UGRD" ) && ($type2 eq "10 m above ground" )) {$ugrd{"$lon,$lat"}=$val;}
+		if (($type1 eq "VGRD" ) && ($type2 eq "10 m above ground" )) {$vgrd{"$lon,$lat"}=$val;}
+		if (($type1 eq "GUST" ) && ($type2 eq "surface" )) {$gust{"$lon,$lat"}=$val;}
+
+		if (($type1 eq "TCDC") && ($type2 eq "low cloud layer" )) {$lcl{"$lon,$lat"}=$val;}
+		if (($type1 eq "TCDC") && ($type2 eq "middle cloud layer" )) {$mcl{"$lon,$lat"}=$val;}
+		if (($type1 eq "TCDC") && ($type2 eq "high cloud layer" )) {$hcl{"$lon,$lat"}=$val;}
+
+		if (($type1 eq "PRATE" ) && ($type2 eq "surface" )) {$prate{"$lon,$lat"}=$val;}
+		if (($type1 eq "CSNOW" ) && ($type2 eq "surface" )) {$csnow{"$lon,$lat"}=$val;}
+
+		if (($type1 eq "DLWRF" ) && ($type2 eq "surface" )) {$dlwrf{"$lon,$lat"}=$val;}
+		}
+	close CSVDATA;
+
+
+	# add forecastHour to the run time (in seconds) to get the proper epoc time for the forecast.
+	# 	3600 = 1 hour * forecastHour to get proper # of seconds
+	$forecastTime=$runTimestamp+$forecastHour*3600;
+
+	# convert it to min/sec/etc for readable values
+	($sec, $min, $hour, $day, $month, $year, $wday, $yday, $isdst) = localtime($forecastTime);
+	$month++;	# localtime returns month as 0-11 so add 1
+	$year += 1900;	# localtime returns year minus 1900 so add it back
+
+	$month=	$twodigit[$month];
+	$day=	$twodigit[$day];
+	$hour=	$twodigit[$hour];
+
+	$recordTime="$hour:00 $day/$month/$year";
+
+#	print "Forecast hour is $forecastHour\n";
+#	print "Run timestamp hour is $runHour\n";
+#	print "Record timestamp hour is $hour\n\n";
+
+
+# determine all 4 corners surrounding the site
+foreach $line (@sites) {
+	$line =~ m/(.*),(.*),(.*)/;
+	$site=$1;
+	$lat=$2;
+	$lon=$3;
+
+# print "Calculating for $site: ( $lon, $lat ):\n";
+
+$intLon=	int($lon);
+$intLat=	int($lat);
+
+
+$decimal = $lon-$intLon;
+
+# get corner values for nearest readings surrounding the site
+if ($decimal >= .5) {
+        $x1 = $intLon +.5;
+        $x2 = $intLon + 1;
+        }
+
+if (($decimal <= .5) && ($decimal >=0)) {
+        $x1 = $intLon;
+        $x2 = $intLon + .5;
+        }
+
+if ($decimal <= -.5) {
+        $x1 = $intLon - 1;
+        $x2 = $intLon - .5;
+        }
+
+if (($decimal >= -.5) && ($decimal <0)) {
+        $x1 = $intLon - .5;
+        $x2 = $intLon;
+        }
+if ($lon == $intLon) {
+        $x1 = $lon;
+        $x2 = $lon;
+        }
+
+
+$decimal = $lat-$intLat;
+
+if ($decimal >= .5) {
+        $y1 = $intLat +.5;
+        $y2 = $intLat + 1;
+        }
+
+if (($decimal <= .5) && ($decimal >=0)) {
+        $y1 = $intLat;
+        $y2 = $intLat + .5;
+        }
+
+if ($decimal <= -.5) {
+        $y1 = $intLat - 1;
+        $y2 = $intLat - .5;
+        }
+
+if (($decimal >= -.5) && ($decimal <0)) {
+        $y1 = $intLat - .5;
+        $y2 = $intLat;
+        }
+if ($lon == $intLat) {
+        $y1 = $lat;
+        $y2 = $lat;
+        }
+
+
+#print "BL Corner 1:	$x1, $y1\n";
+#print "BR Corner 2:	$x2, $y1\n";
+#print "UL Corner 3:	$x1, $y2\n";
+#print "UR Corner 4:	$x2, $y2\n\n";
+
+
+# "2014-05-05 12:00:00","2014-05-06 21:00:00","TMP","2 m above ground",0,-90,218.1
+
+
+# define the 11 types of interest
+
+@types=("FAT","FWSU","FWSV","FLC","FMC","FHC","RH","PRATE","CSNOW","GUST","DLWRF");
+
+# loop through each type to get all 4 values (for each corner), assigning values from
+# their own associative arrays
+
+foreach $type (@types) {
+
+if ($type eq "FAT" ) {
+	$val1=$tmp{"$x1,$y1"};
+	$val2=$tmp{"$x2,$y1"};
+	$val3=$tmp{"$x1,$y2"};
+	$val4=$tmp{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation $site for $type: $val1, $val2, $val3, $val4 is $finalV\n\n";
+	$result{$type}=$finalV;
+	}
+
+# RH
+if ($type eq "RH" ) {
+	$val1=$rh{"$x1,$y1"};
+	$val2=$rh{"$x2,$y1"};
+	$val3=$rh{"$x1,$y2"};
+	$val4=$rh{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n\n";
+	$result{$type}=$finalV;
+	}
+
+# GUST (m/s)
+if ($type eq "GUST" ) {
+	$val1=$gust{"$x1,$y1"};
+	$val2=$gust{"$x2,$y1"};
+	$val3=$gust{"$x1,$y2"};
+	$val4=$gust{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n\n";
+	$result{$type}=$finalV;
+	}
+
+# DLWRF
+if ($type eq "DLWRF" ) {
+	$val1=$dlwrf{"$x1,$y1"};
+	$val2=$dlwrf{"$x2,$y1"};
+	$val3=$dlwrf{"$x1,$y2"};
+	$val4=$dlwrf{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n\n";
+	$result{$type}=$finalV;
+	}
+
+# PRATE
+if ($type eq "PRATE" ) {
+	$val1=$prate{"$x1,$y1"};
+	$val2=$prate{"$x2,$y1"};
+	$val3=$prate{"$x1,$y2"};
+	$val4=$prate{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	$result{$type}=$finalV;
+	}
+
+# CSNOW
+if ($type eq "CSNOW" ) {
+	$val1=$csnow{"$x1,$y1"};
+	$val2=$csnow{"$x2,$y1"};
+	$val3=$csnow{"$x1,$y2"};
+	$val4=$csnow{"$x2,$y2"};
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+#	Assign only a 0 or 1, based on the result value
+	if ($finalV > .55) {
+		$result{$type}=1;
+		}
+	else {
+		$result{$type}=0;
+		}
+	}
+
+
+# FCL, FMC, FHC need to be converted to % of 8, and rounded
+if ($type eq "FLC" ) {
+	$val1=$lcl{"$x1,$y1"};
+	$val2=$lcl{"$x2,$y1"};
+	$val3=$lcl{"$x1,$y2"};
+	$val4=$lcl{"$x2,$y2"};
+
+#	values need to be 1-8
+	$val1=int($val1/100*8+.5);
+	$val2=int($val2/100*8+.5);
+	$val3=int($val3/100*8+.5);
+	$val4=int($val4/100*8+.5);
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	$intFinalV=int($finalV+.5);
+	$result{$type}=$intFinalV;
+	}
+if ($type eq "FMC" ) {
+	$val1=$mcl{"$x1,$y1"};
+	$val2=$mcl{"$x2,$y1"};
+	$val3=$mcl{"$x1,$y2"};
+	$val4=$mcl{"$x2,$y2"};
+
+#	values need to be 1-8
+	$val1=int($val1/100*8+.5);
+	$val2=int($val2/100*8+.5);
+	$val3=int($val3/100*8+.5);
+	$val4=int($val4/100*8+.5);
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	$intFinalV=int($finalV+.5);
+	$result{$type}=$intFinalV;
+	}
+if ($type eq "FHC" ) {
+	$val1=$hcl{"$x1,$y1"};
+	$val2=$hcl{"$x2,$y1"};
+	$val3=$hcl{"$x1,$y2"};
+	$val4=$hcl{"$x2,$y2"};
+
+#	values need to be 1-8
+	$val1=int($val1/100*8+.5);
+	$val2=int($val2/100*8+.5);
+	$val3=int($val3/100*8+.5);
+	$val4=int($val4/100*8+.5);
+	&interpolate;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	$intFinalV=int($finalV+.5);
+	$result{$type}=$intFinalV;
+	}
+
+
+# FWSU (ugrd) and FWSV (vgrd) are used to calculate FWS
+# Interpolate is needed to later calculate Wind Direction
+# Interpolation of FWS will be done after each FWS is calculated in the 'Combining FWSU and FWSV' area
+if ($type eq "FWSU") {
+	$val1=$ugrd{"$x1,$y1"};
+	$val2=$ugrd{"$x2,$y1"};
+	$val3=$ugrd{"$x1,$y2"};
+	$val4=$ugrd{"$x2,$y2"};
+	$FWSU[1]=$val1;
+	$FWSU[2]=$val2;
+	$FWSU[3]=$val3;
+	$FWSU[4]=$val4;
+	&interpolate;
+	$result{$type}=$finalV;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	}
+if ($type eq "FWSV") {
+	$val1=$vgrd{"$x1,$y1"};
+	$val2=$vgrd{"$x2,$y1"};
+	$val3=$vgrd{"$x1,$y2"};
+	$val4=$vgrd{"$x2,$y2"};
+	$FWSV[1]=$val1;
+	$FWSV[2]=$val2;
+	$FWSV[3]=$val3;
+	$FWSV[4]=$val4;
+	&interpolate;
+	$result{$type}=$finalV;
+#	print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+	}
+
+}
+
+
+# print "Combining FWSU and FWSV:\n";
+for ($count = 1; $count <= 4; $count++) {
+	$v=$FWSV[$count];
+	$u=$FWSU[$count];
+	$windSpeed = sqrt(${u}**2+${v}**2);
+	$FWS[$count]=$windSpeed;
+#	print "Wind Speed for $u and $v is $windSpeed\n";
+}
+
+$windDirection=	rad2deg(atan2($result{FWSU},$result{FWSV}));
+if ($result{FWSU}<0) { $windDirection += 360; }
+
+# interpolating FWS
+$val1=$FWS[1];
+$val2=$FWS[2];
+$val3=$FWS[3];
+$val4=$FWS[4];
+$type="FWS";
+&interpolate;
+# print "Interpolation for $type: $val1, $val2, $val3, $val4 is $finalV\n";
+$result{$type}=$finalV;
+# print "Wind Direction is $windDirection\n\n";
+
+
+# Calculating Dew Point using RH and FAT
+$rh=$result{RH} / 100;					#Relative Humidity, value between 0 and 1
+$at=$result{FAT};					#Air Temp, in K
+
+$svp=6.11*$e**(5407.52*(1/273.15-1/$at));		#Saturation Vapor Pressure
+$vp=$svp*$rh;						#Vapor Pressure
+$dpt=-5407.52/(log($vp/6.11)-19.8078);			#Dew Point Temp in K
+$result{FDT}=$dpt-273.15;				#Dew Point in C
+
+
+
+# Using CSNOW, PRATE, and FAT to get FPS
+
+$snowflag=	$result{'CSNOW'};
+$precip_rate=	$result{'PRATE'};
+$temp=		$result{'FAT'}-273.15;  			#temp in C
+
+
+# Determine pricip state category (FPS)
+if ($precip_rate > 0) {
+
+	# Snow flag is 0 for no snow or 1 for snow, but is a real variable
+		$prate_in_mmperhr = $precip_rate * 3600;		# precip rate comes in mm/s
+		$prate = $prate_in_mmperhr;
+
+		if ($snowflag > 0) {
+			# Determine LWE ratio
+			if ($temp >= 0) {
+				$snow_wat_ratio = 6;
+			}
+			elsif ((0 > $temp) && ($temp <= -5)) {
+				$snow_wat_ratio = 9;
+			}
+			elsif ((-5 > $temp) && ($temp <= -10)) {
+				$snow_wat_ratio = 12;
+			}
+			else {
+				$snow_wat_ratio = 15;
+			}
+
+			$snowfall_rate = $prate * $snow_wat_ratio;	# still in units of mm/hr
+			$snowfall_rate = $snowfall_rate / 10;		# now in units of cm/hr
+
+			if ($snowfall_rate < .5) {
+				$precip_state_category = 4;		# "light snow"
+				}
+			elsif ((.5 <= $snowfall_rate) && ($snowfall_rate <= 4)) {
+				$precip_state_category = 5;		# "medium snow"
+				}
+			elsif ($snowfall_rate > 4) {
+				$precip_state_category = 6;		# "heavy snow"
+				}
+			else {
+				$precip_state_category = 7;		# "invalid"
+				}	
+		}
+		else {
+			if ($prate < 2.5) {
+				$precip_state_category = 1;		# "light precipitation"
+				}
+			elsif ((2.5 <= $prate) && ($prate <= 7.5)) {
+				$precip_state_category = 2;		# "medium precipitation"
+				}
+			elsif ($prate > 7.5) {
+				$precip_state_category = 3;		# "heavy precipitation"
+				}
+			else {
+				$precip_state_category = 7;		# "undefined"
+				}
+			}
+	}
+	else {
+		$precip_state_category = 0;				# no precip
+	}
+
+
+$result{'FPS'} = $precip_state_category;
+
+
+# Create the MSO Output
+&msoify;
+
+
+# Create the XML Output
+&xmlify;
+
+
+
+# interpolate the 4 corner values
+sub interpolate {
+	$result1="";
+	$result2="";
+	$finalV="";
+	$result1=	($x2-$lon)/($x2-$x1)*$val1 + ($lon-$x1)/($x2-$x1)*$val2;
+	$result2=	($x2-$lon)/($x2-$x1)*$val3 + ($lon-$x1)/($x2-$x1)*$val4;
+	$finalV=	($y2-$lat)/($y2-$y1)*$result1 + ($lat-$y1)/($y2-$y1)*$result2;
+#	print "For $type using:  $val1   $val2   $val3   $val4:   =  $finalV\n";
+	}
+
+
+# Create the XML output
+sub xmlify {
+	$recordTime =~ m/(\d{2}):00 (\d{2})\/(\d{2})\/(\d{4})/;
+		$xmlHour=	$1;
+		$xmlDay=	$2;
+		$xmlMonth=	$3;
+		$xmlYear=	$4;
+
+	# values needed for the 'feels like' calculation
+	$tempC=$result{'FAT'}-273.15;
+	$mps=$result{'FWS'};
+	$humid=$result{'RH'};
+	&feels_like_temp;
+
+	$xmlFile = $site;
+	$xmlFile =~ s/[^A-Za-z0-9\-\_\.\(\)]//g;		
+	open (XML,">>$path/$datadate.xml/$xmlFile.xml");
+#	print XML "        <vai3:resultOf reason=\"scheduled\" timestamp=\"$scheduledYear-$scheduledMonth-${scheduledDay}T$runHour:00:00Z\" codeSpace=\"ICE_DB_USER_SPECIFIC\">\n";
+	print XML "        <vai3:resultOf reason=\"scheduled\" timestamp=\"$xmlYear-$xmlMonth-${xmlDay}T$xmlHour:00:00Z\" codeSpace=\"ICE_DB_USER_SPECIFIC\">\n";
+
+#	print XML "            <vai3:value code=\"timeOfForecast\">$xmlYear-$xmlMonth-${xmlDay}T$xmlHour:00:00</vai3:value>\n";
+	print XML "            <vai3:value code=\"timeOfForecast\">$scheduledYear-$scheduledMonth-${scheduledDay}T$runHour:00:00</vai3:value>\n";
+	print XML "            <vai3:value code=\"FAT\">"; printf XML "%1.1f", $result{'FAT'}-273.15; print XML "</vai3:value>\n";
+	print XML "            <vai3:value code=\"FWS\">"; printf XML "%1.1f", $result{'FWS'}; print XML "</vai3:value>\n";
+
+	# check to make sure FWS isn't greater than GUST.  If so, increase GUST to match FWS!
+	if ($result{'FWS'} > $result{'GUST'}) { $result{'GUST'}=$result{'FWS'}; }
+
+	print XML "            <vai3:value code=\"FWG\">"; printf XML "%1.1f", $result{'GUST'}; print XML "</vai3:value>\n";
+#	print XML "            <vai3:value code=\"FUV\">"; printf XML "%1.1f", $result{'DLWRF'}; print XML "</vai3:value>\n";	# commented out for now
+	print XML "            <vai3:value code=\"FWD\">"; printf XML "%1.1f", $windDirection; print XML "</vai3:value>\n";
+#	print XML "            <vai3:value code=\"FFL\">"; printf XML "%1.1f", $feelsC; print XML "</vai3:value>\n";		# commented out for now
+	print XML "            <vai3:value code=\"FRH\">";print XML int($result{'RH'}+.5); print XML "</vai3:value>\n";
+	print XML "        </vai3:resultOf>\n";
+	close XML;
+}
+
+
+# Create the MSO output
+sub msoify {
+	$msoFile = $site;
+	$msoFile =~ s/[^A-Za-z0-9\-\_\.\(\)]//g;
+	open (SITEDATA,">>$path/$datadate.mso/$msoFile.mso");
+	print SITEDATA "$recordTime ";
+
+	print SITEDATA "FAT="; printf SITEDATA "%1.1f ", $result{'FAT'}-273.15;
+	print SITEDATA "FDT="; printf SITEDATA "%1.1f ", $result{'FDT'};
+	print SITEDATA "FWS="; printf SITEDATA "%1.1f ", $result{'FWS'};
+	print SITEDATA "FPS=$result{'FPS'} ";
+
+	$FLC=$result{'FLC'};
+	$FMC=$result{'FMC'};
+	$FHC=$result{'FHC'};
+
+	# Calculate the FTC and FCT
+	#
+	# FTC = largest of the FLC, FMC, FHC
+	$FTC = ((sort {$b <=> $a} ($FLC,$FMC,$FHC))[0]);
+
+	# determine standard FCT values
+	if (($FLC >= $FMC) && ($FLC >= $FHC)) { $FCT=1; }
+	if (($FMC >= $FHC) && ($FMC > $FLC)) { $FCT=2; }
+	if (($FHC > $FMC) && ($FHC > $FLC)) { $FCT=3; }
+
+
+	# special case 1
+	# if all values are equal but not zero, FCT needs to be 1.
+	if (($FLC == $FMC) && ($FMC == $FHC)) { $FCT=1; }
+
+	# special case 2
+	# if all values are 0, FTC will be zero.  If that's the case, FCT needs to be zero.
+	if ($FTC == 0) { $FCT=0; }
+
+	# check whether to use the FTC/FCT values, or to use the FLC/FMC/FHC values
+	if ($ftcsite{$site}) {
+		print SITEDATA "FCT=$FCT ";
+		print SITEDATA "FTC=$FTC ";
+		}
+	else {
+		print SITEDATA "FLC=$result{'FLC'} ";
+		print SITEDATA "FMC=$result{'FMC'} ";
+		print SITEDATA "FHC=$result{'FHC'} ";
+		}
+
+	print SITEDATA "\n";
+	close SITEDATA;
+
+}
+
+
+}
+}
+
+sub feels_like_temp {
+
+# convert m/s to k/h
+$kph=$mps*3.6;
+
+# calculate tempF
+$tempF = $tempC * 9/5 + 32;
+
+$mph=.621371192237334 * $kph;
+
+# heat index calculation is only useful when temperature > 80F and humidity > 40%
+if ($humid > 40 && $tempF > 80) {
+     $feelsF = -42.379 + 2.04901523 * $tempF + 10.14333127 * $humid
+         - 0.22475541 * $tempF * $humid - 6.83783 * 10**(-3)*($tempF**(2))
+         - 5.481717 * 10**(-2)*($humid**(2))
+         + 1.22874 * 10**(-3)*($tempF**(2))*($humid)
+         + 8.5282 * 10**(-4)*($tempF)*($humid**(2))
+         - 1.99 * 10**(-6)*($tempF**(2))*($humid**(2));
+	$feelsC = ($feelsF-32)*5/9;
+      } else {
+
+# else simply return wind chill
+
+#   windchill only works if:
+#    temperatures above -50 F (-45.5 C) and below 50 F (10 C).
+#    wind speeds above 3 MPH (4.8 KPH) and below 110 MPH (177 KPH).
+
+	if (($kph < 4.8) || ($kps > 177) || ($tempC < -45.5) || ($tempC > 10)) {
+	$feelsC = $tempC;
+	return; }
+	$feelsC = windchill_si($tempC, $kph);
+
+    }
+}
+
+
+# add the site names, tags, etc., around the final files
+
+
+foreach $site (@sites) {
+	chomp $site;
+	$site =~ m/(.*),(.*),(.*)/;
+	$id=$1;
+	$lat=$2;
+	$lon=$3;
+
+	# MSO files
+	$msoFile = $id;
+	$msoFile =~ s/[^A-Za-z0-9\-\_\.\(\)]//g;
+	open(SITEFILE,"$path/$datadate.mso/$msoFile.mso") or die "cannot open $msoFile.mso: $!"; 
+	@data=<SITEFILE>;
+	close(SITEFILE);
+
+	open(SITEFILE,">$path/$datadate.mso/$msoFile.mso") or die "cannot open $msoFile.mso: $!"; 
+	print SITEFILE "@ $id\n";
+	print SITEFILE @data;
+	print SITEFILE "#\n";
+	close(SITEFILE);
+
+
+
+	# XML files
+	$xmlFile = $id;
+	$xmlFile =~ s/[^A-Za-z0-9\-\_\.\(\)]//g;
+	open(SITEFILE,"$path/$datadate.xml/$xmlFile.xml") or die "cannot open $xmlFile.xml: $!"; 
+	@data=<SITEFILE>;
+	close(SITEFILE);
+
+	open(SITEFILE,">$path/$datadate.xml/$xmlFile.xml") or die "cannot open $xmlFile.xml: $!";
+	$| = 1;
+	print SITEFILE "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+	print SITEFILE "<vai3:observation xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:SOAP-ENC=\"http://schemas.xmlsoap.org/soap/encoding/\" xmlns:xmi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:vai4=\"http://www.vaisala.com/schema/ice/iceMsgCommon/v1\" xmlns:vai1=\"http://www.vaisala.com/wsdl/ice/uploadIceObservation/v2\" xmlns:vai3=\"http://www.vaisala.com/schema/ice/obsMsg/v2\" version=\"2.0\" fastTrackQC=\"false\">\n";
+	print SITEFILE "    <vai3:instance>\n";
+	print SITEFILE "        <vai3:target>\n";
+	print SITEFILE "            <vai4:idType>stationId</vai4:idType>\n";
+	print SITEFILE "            <vai4:id>$id</vai4:id>\n";
+	print SITEFILE "            <vai4:geoPosition x=\"$lon\" y=\"$lat\" srs=\"EPSG:4326\"/>\n";
+	print SITEFILE "        </vai3:target>\n";
+	print SITEFILE @data;
+	print SITEFILE "    </vai3:instance>\n";
+	print SITEFILE "</vai3:observation>\n";
+	close(SITEFILE);
+}
+
+# remove the 'instance running' file
+unlink ("$path/build-running/$instance.running");

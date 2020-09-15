@@ -1,0 +1,55 @@
+---
+radarviews:
+    uk:
+        foreca_layer: radar
+        size:
+            width: 531
+            height: 706
+        bounds:
+            top: 61
+            bottom: 48
+            left: -12
+            right: 5
+        transparency: 255,255,255
+    dk:
+        foreca_layer: radar
+        size:
+            width: 900
+            height: 723
+        bounds:
+            top: 57.9524
+            bottom: 54.4517
+            left: 7.7153
+            right: 15.553
+        transparency: 255,255,255
+    us:
+        size:
+            width: 984
+            height: 544
+        bounds:
+            top: 50
+            bottom: 24
+            left: -126
+            right: -66
+    fi:
+        foreca_layer: radar
+        size:
+            width: 445
+            height: 700
+        bounds:
+            top: 71.42
+            bottom: 58.55
+            left: 15.3
+            right: 35.1
+        transparency: 255,255,255
+    be:
+        foreca_layer: radar
+        size:
+            width: 862
+            height: 700
+        bounds:
+            top: 51.7576
+            bottom: 49.2714
+            left: 2.0544
+            right: 6.8665
+        transparency: 255,255,255

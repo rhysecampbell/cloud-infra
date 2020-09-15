@@ -1,0 +1,9 @@
+#!/bin/sh
+
+{% if deployment_name.endswith('-prod') %}   # bold white on black
+export PROMPT_COMMAND='export PS1="\[\e[37;41;1m\][\u@\h \W]\$\[\e[m\] "'
+{% elif deployment_name.endswith('-pre') %}  # yellow
+export PROMPT_COMMAND='export PS1="\[\e[1;33m\][\u@\h \W]\$\[\e[m\] "'
+{% else %}                                   # green
+export PROMPT_COMMAND='export PS1="\[\e[1;32m\][\u@\h \W]\$\[\e[m\] "'
+{% endif %}

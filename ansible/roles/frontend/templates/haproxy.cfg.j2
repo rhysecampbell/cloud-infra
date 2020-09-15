@@ -1,0 +1,56 @@
+frontend 80-http
+    bind *:80
+    acl acl_missing_auth hdr_cnt(Authorization) eq 0
+    acl acl_swagger path_beg /swagger
+    acl acl_acme path_beg /.well-known/acme-challenge
+{% if letsencrypt %}
+    redirect scheme https code 301 if !{ ssl_fc } !acl_acme
+    bind *:443 ssl no-sslv3 no-tls-tickets crt /var/lib/acme/haproxy/{{ ansible_nodename }} {% if extradomains is defined %}{% for domain in extradomains %} crt /var/lib/acme/haproxy/{{ domain }} {% endfor %}{% endif %}
+
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+{% endif %}
+
+    option forwardfor
+    option http-server-close
+
+    use_backend letsencrypt if acl_acme
+    use_backend python if { hdr_beg(host) -i api. }
+    use_backend python if { url_beg /api }
+    use_backend stats-admin if { url_beg /haproxy?admin }
+    use_backend python if { url_beg /vaisala }
+    use_backend python if { url_beg /vai-metar }
+    use_backend python if { url_beg /graphs/obs.jsp }
+    use_backend python if { url_beg /graphs/fcast.jsp }
+    use_backend python if { url_beg /pg_roles }
+    use_backend python if { url_beg /nagios-tests }
+    http-request auth if acl_missing_auth !acl_swagger !acl_acme
+    http-request del-header Proxy
+    default_backend httpd
+    capture request header X-Forwarded-For len 15
+    redirect location /swagger/?url=/swagger.yaml if { path -i /swagger }
+
+backend httpd
+ {% for host in groups['frontends'] %}
+ {% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+  server {{ hostvars[host].ansible_hostname }}:8081 {{ ip }}:8081 check
+ {% endfor %}
+{% endfor %}
+
+backend python
+ {% for host in groups['frontends'] %}
+ {% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+  server {{ hostvars[host].ansible_hostname }}:5000 {{ ip }}:5000 check
+ {% endfor %}
+{% endfor %}
+
+defaults
+    no log
+
+listen imageServer-50001
+    bind *:50001
+ {% for host in groups['frontends'] %}
+ {% for ip in hostvars[host].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+  server {{ hostvars[host].ansible_hostname }}:50000 {{ ip }}:50000 check
+ {% endfor %}
+{% endfor %}
+

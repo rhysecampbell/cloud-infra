@@ -1,0 +1,56 @@
+---
+- name: Dependencies
+  yum: name={{ item }} state=installed
+  with_flattened:
+      - nodejs
+      - npm
+
+- name: Upgrade npm
+  npm: name=npm global=yes version=3.7.1
+
+- name: Check if log.io installed.
+  command: npm -g list log.io
+  register: logioversion
+  failed_when: False
+  changed_when: False
+
+- name: Install log.io
+  command: npm -g --unsafe-perm install log.io
+  #FIXME: npm: name=log.io unsafe_perm=True
+  when: '"log.io" not in logioversion.stdout'
+  notify: restart log.io
+
+- name: configuration files
+  template: src={{ item }}.j2 dest=~root/.log.io/{{ item }}
+  with_items:
+      - log_server.conf
+      - web_server.conf
+      - harvester.conf
+  notify: restart log.io
+
+- name: Install init scripts
+  copy: src={{ item }}.init dest=/etc/init/{{ item }}.conf
+  with_items:
+      - "log.io-server"
+      - "log.io-harvester"
+  notify: restart log.io
+
+- name: Install init.d scripts
+  copy: src={{ item }}.init.d dest=/etc/init.d/{{ item }} mode=0755
+  with_items:
+      - "log.io-server"
+      - "log.io-harvester"
+  notify: restart log.io
+
+- name: Start log.io
+  service: name={{ item }} state=started enabled=yes
+  with_items:
+      - "log.io-server"
+      - "log.io-harvester"
+
+- include: iptables.yml
+
+- name: Install haproxy config
+  template: src=haproxy.cfg.j2 dest=/etc/haproxy/conf.d/log.io.cfg
+  notify: merge haproxy config
+  tags: letsencrypt

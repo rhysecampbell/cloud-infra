@@ -1,0 +1,19 @@
+---
+- name: iptables {{ item.name }}
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p tcp --dport {{ item.port }} -j ACCEPT -m comment --comment "ansible-{{ item.name }}-{{ item.port }}"
+  when: iptablesrules.stdout.find("ansible-{{ item.name }}-{{ item.port }}") == -1
+  notify: save iptables
+  with_items:
+      - { name: 'psql', port: 5432 }
+      - { name: 'pgbouncer', port: 6543 }
+      - { name: 'pgwrite', port: 6544 }
+      - { name: 'pgread', port: 6545 }
+      - { name: 'pgsqlchk', port: 45432 }
+      - { name: 'pgsqlchk-read', port: 45435 }
+  tags: iptables
+
+- name: iptables vrrp
+  command: /sbin/iptables -I INPUT 1 -s {{ subnet }}.0/24 -p vrrp -j ACCEPT -m comment --comment "ansible-vrrp"
+  when: iptablesrules.stdout.find("ansible-vrrp") == -1
+  notify: save iptables
+  tags: iptables

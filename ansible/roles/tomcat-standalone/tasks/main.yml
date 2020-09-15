@@ -1,0 +1,68 @@
+---
+- name: Install Java 1.8
+  yum: name=java-1.8.0-openjdk state=present
+
+- name: Remove old Java versions
+  yum: name={{ item }} state=absent
+  with_items:
+      - java-1.7.0-openjdk
+      - java-1.6.0-openjdk
+
+- name: add group "tomcat"
+  group: name=tomcat
+
+- name: add user "tomcat"
+  user: name=tomcat group=tomcat home=/usr/share/tomcat createhome=no
+
+- unarchive: src=apache-tomcat-{{ tomcat_version }}.tar.gz dest=/opt creates=/opt/apache-tomcat-{{ tomcat_version }}
+  register: tomcat_upgrade
+
+- name: Stop tomcat
+  service: name=tomcat state=stopped
+  when: tomcat_upgrade.changed
+  ignore_errors: yes
+
+- name: Symlink install directory
+  file: src=/opt/apache-tomcat-{{ tomcat_version }} path=/usr/share/tomcat state=link
+  notify: restart tomcat
+
+- name: Remove Old tomcat directories.
+  file: path=/opt/apache-tomcat-{{ item }} state=absent
+  with_items: "{{ remove_tomcat_versions }}"
+
+- name: Remove Old tomcat tarballs.
+  file: path=/opt/apache-tomcat-{{ item }}.tar.gz state=absent
+  with_items: "{{ remove_tomcat_versions }}"
+
+- name: Change ownership of Tomcat installation
+  file: path=/usr/share/tomcat/ owner=tomcat group=tomcat state=directory recurse=yes
+
+- name: Configure Tomcat server
+  template: src=server.xml dest=/usr/share/tomcat/conf/
+  notify: restart tomcat
+
+- name: Configure Tomcat users
+  template: src=tomcat-users.xml dest=/usr/share/tomcat/conf/
+  notify: restart tomcat
+
+- name: Install Tomcat init script
+  copy: src=tomcat-initscript.sh dest=/etc/init.d/tomcat mode=0755
+
+- name: Start Tomcat
+  service: name=tomcat state=started enabled=yes
+
+#- name: deploy iptables rules
+#  template: src=iptables-save dest=/etc/sysconfig/iptables
+#  notify: restart iptables
+
+- name: wait for tomcat to start
+  wait_for: port={{http_port}}
+
+- name: Install logrotate config
+  copy: src=tomcat.logrotate dest=/etc/logrotate.d/tomcat
+
+- name: cron tomcat log cleanup
+  cron: name="cron tomcat log cleanup"
+        cron_file=ansible_tomcat
+        user=root
+        job="find /opt/apache-tomcat-*/logs/ \( -name \*.log -o -name \*.txt \) -mtime +7 -delete >/dev/null 2>&1"

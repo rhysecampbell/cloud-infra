@@ -1,0 +1,18 @@
+A few examples of what's possible with ansible:
+
+ansible all -m ping
+ansible all -m yum -a "name=* state=latest"
+
+ansible frontends -a "/sbin/ip a"
+
+ansible frontends -m copy -a "src=README dest=/tmp/README"
+
+ansible frontends -m file -a "dest=/var/www/html/random-test state=directory"
+ansible frontends -m copy -a "src=nodes.json dest=/var/www/html/random-test/nodes.json"
+
+ansible www1 -m service -a "name=httpd state=stopped"
+ansible frontends -m service -a "name=httpd state=started"
+ansible frontends -m service -a "name=httpd state=stopped"
+
+ansible-playbook ansible/example.yml
+ANSIBLE_HOST_KEY_CHECKING=false ansible-playbook ansible/main.yml

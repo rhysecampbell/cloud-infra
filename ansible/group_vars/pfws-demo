@@ -1,0 +1,14 @@
+domain: vaicld-dev.com
+
+subnet: 192.168.16
+
+administrators:
+    - jpc
+    - jesp
+    - rec
+    - bl
+
+reboot_after_yum: False
+
+dqmweb_applications:
+    - dqmforecast

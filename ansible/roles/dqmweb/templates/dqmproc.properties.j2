@@ -1,0 +1,40 @@
+#
+# DqmProc properties
+#
+
+# REST service
+# NOTE: version is required
+dqmapp.service.url=http://localhost:8080/dqmapp/services/v1/
+dqmapp.service.uid=dqmuser
+dqmapp.service.pwd=v@1sAlA
+
+# "DQM API" / observation service
+{% if 'dqmprocessor' in groups %}
+{% for ip in hostvars[groups['dqmprocessor'][0]].ansible_all_ipv4_addresses if ip.startswith(subnet) %}
+dqmimage.service.url=http://{{ ip }}:5000/api/v1/dqmImage/
+dqmobs.service.url=http://{{ ip }}:5000/api/v1/dqmData
+{% endfor %}
+{% endif %}
+dqmobs.service.uid=demo
+dqmobs.service.pwd=demovai
+
+# Where is POWS?
+{% if pows_address is defined %}
+pows.service.url=http://{{ pows_address }}/api
+{% endif %}
+
+#which jobs are enabled?
+job.dqmproc.fault.system={{ dqmprocjobs_fault_system | default("true") }}
+job.dqmproc.fault.data={{ dqmprocjobs_fault_data | default("true") }}
+job.dqmproc.fault.camera={{ dqmprocjobs_fault_camera | default("true") }}
+job.dqmproc.fault.hourly={{ dqmprocjobs_fault_hourly | default("true") }}
+job.dqmproc.observation.observationReader={{ dqmprocjobs_observation_observationReader | default("true") }}
+job.dqmproc.process.regionStationCameraCount={{ dqmprocjobs_process_regionStationCameraCount | default("true") }}
+job.dqmproc.process.networkPerformanceRollup={{ dqmprocjobs_process_networkPerformanceRollup | default("true") }}
+job.dqmproc.process.regionStationImageCount={{ dqmprocjobs_process_regionStationImageCount | default("true") }}
+job.dqmproc.observation.powsWriter={{ dqmprocjobs_observation_powsWriter | default("false") }}
+job.dqmproc.observation.mongoWriter={{ dqmprocjobs_observation_mongoWriter | default("false") }}
+job.dqmproc.observation.riakWriter={{ dqmprocjobs_observation_riakWriter | default("false") }}
+
+job.dqmproc.process.forecast.deleteOldAlertsJob=true
+job.dqmproc.process.forecast.alertsAgeDays=14

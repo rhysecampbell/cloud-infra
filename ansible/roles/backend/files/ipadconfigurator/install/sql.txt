@@ -1,0 +1,99 @@
+
+---------------------------------------------------------------------------------------------------------------------
+-- Copy data from old user database 
+
+INSERT INTO user_roles
+	(role,comments,added_by,date_added)
+SELECT DISTINCT ON (role) role,comments,added_by,date_added
+	FROM "user_roles.old";
+
+	
+INSERT INTO users
+	(username,password,comments,added_by,date_added)
+SELECT username,password,comments,added_by,date_added
+	FROM "users.old";
+
+INSERT INTO user_roles_ref (uid,rid)
+SELECT u.id AS uid,r.id AS rid
+FROM "user_roles.old" AS o
+INNER JOIN users AS u ON u.username = o.username
+INNER JOIN user_roles AS r ON r.role = o.role
+---------------------------------------------------------------------------------------------------------------------
+-- select user info
+SELECT
+	u.username,
+	r.role,
+	u.comments,
+	u.added_by,
+	u.date_added
+FROM users AS u
+LEFT JOIN user_roles_ref AS f ON u.id = f.uid
+LEFT JOIN user_roles AS r ON r.id = f.rid
+
+-- Add user
+INSERT INTO users (username,password) VALUES ('johnny', md5('johnny'))
+
+-- Add user role ref  info
+INSERT INTO user_roles_ref (uid,rid)
+SELECT u.id AS uid, r.id AS rid
+FROM user_roles AS r, users AS u
+WHERE r.role = 'all' AND u.username = 'johnny'
+
+-- delete user 
+DELETE FROM user_roles_ref WHERE uid IN (
+    SELECT id FROM users
+	WHERE username = 'johnny'
+)
+DELETE FROM users WHERE username = 'johnny'
+
+-- Delete user from all roles
+DELETE FROM user_roles_ref WHERE uid IN (
+  SELECT u.id
+  FROM users AS u
+  WHERE u.username = 'johnny'
+}
+
+-- Delete given role from given user
+DELETE FROM user_roles_ref WHERE id IN (
+  SELECT f.id
+  FROM user_roles_ref AS f
+  INNER JOIN users AS u ON u.id = f.uid
+  INNER JOIN user_roles AS r ON r.id = f.rid
+  WHERE u.username = 'rec' AND r.role = 'idaho'
+)
+
+-- select users that are in ref but not in user table
+SELECT f.uid
+FROM user_roles_ref AS f
+WHERE uid NOT IN ( SELECT u.id FROM users AS u )
+
+-- select users that do not have a role
+SELECT u.username
+FROM users AS u
+WHERE u.id NOT IN ( SELECT f.uid FROM user_roles_ref AS f)
+---------------------------------------------------------------------------------------------------------------------
+	
+SELECT o.username,o.role,o.comments,o.added_by,o.date_added, u.id AS uid,r.id AS rid
+FROM "user_roles.old" AS o
+INNER JOIN users AS u ON u.username = o.username
+INNER JOIN user_roles AS r ON r.role = o.role
+
+
+INSERT INTO user_roles_ref (uid,rid)
+SELECT u.id AS UID, r.id AS rid
+FROM user_roles AS r, users AS u
+WHERE r.role = 'all' AND u.username = 'johnny'
+
+SELECT
+	u.username,
+	r.role,
+	u.comments,
+	u.added_by,
+	u.date_added
+FROM users AS u
+INNER JOIN user_roles_ref AS f ON u.id = f.uid
+INNER JOIN user_roles AS r ON r.id = f.rid
+
+INSERT INTO table1 ( column1 )
+SELECT  col1
+FROM    table2

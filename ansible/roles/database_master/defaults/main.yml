@@ -1,0 +1,42 @@
+---
+postgres_password: CHANGE_ME
+postgres_roles:
+  - authwrite
+  - cloudwrite
+  - metarwrite
+  - madiswrite
+  - obsread
+  - pgsqlchkgrp
+  - qualwrite
+postgres_users:
+  cloudserver:
+    password: "{{ vault_postgres_cloudserver_password | default('CHANGE_ME') }}"
+    roles: cloudwrite
+  frontend:
+    password: "{{ vault_postgres_frontend_password | default('CHANGE_ME') }}"
+    roles: obsread
+  madisserver:
+    password: "{{ vault_postgres_madisserver_password | default('CHANGE_ME') }}"
+    roles: madiswrite
+  metarserver:
+    password: "{{ vault_postgres_metarserver_password | default('CHANGE_ME') }}"
+    roles: metarwrite
+  nagios:
+    password: "{{ vault_postgres_nagios_password | default('CHANGE_ME') }}"
+    roles: obsread
+  pgsqlchkusr:
+    password: "{{ vault_postgres_pgsqlchkusr_password | default('CHANGE_ME') }}"
+    roles: pgsqlchkgrp
+  qualserver:
+    password: "{{ vault_postgres_qualserver_password  | default('CHANGE_ME') }}"
+    roles: qualwrite
+  rolesmanagement:
+    password: "{{ vault_postgres_rolesmanagement_password | default('CHANGE_ME') }}"
+    roles: authwrite
+
+onesignal:
+  enabled: False
+  environment: None
+  keys:
+    applicationid: None
+    auth: None

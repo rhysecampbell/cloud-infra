@@ -1,0 +1,7 @@
+---
+- name: reload haproxy
+  service: name=haproxy state=reloaded
+
+- name: acmetool_reconcile
+  command: /usr/local/bin/acmetool --batch reconcile
+  when: letsencrypt | bool

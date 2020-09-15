@@ -1,0 +1,122 @@
+<html>
+<head>
+  <title>OpenLayers Example</title>
+    <script src="http://openlayers.org/api/OpenLayers.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    </head>
+    <body>
+      <div style="width:100%; height:100%" id="map"></div>
+      <script defer="defer" type="text/javascript">
+	function getParameterByName(name) {
+	    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+	    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+		results = regex.exec(location.search);
+	    return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+	}
+	var role_name = getParameterByName('role');
+	console.log("role is " + role_name);
+	var obs_url = "/api/rwis/latest/" + role_name
+	console.log("obs_url was " + obs_url);
+
+        var map = new OpenLayers.Map('map');
+        var wms = new OpenLayers.Layer.WMS( "OpenLayers WMS",
+            "http://vmap0.tiles.osgeo.org/wms/vmap0", {layers: 'basic'} );
+        map.addLayer(wms);
+        map.zoomToMaxExtent();
+
+
+	// create the layer with listeners to create and destroy popups
+	var vector = new OpenLayers.Layer.Vector("Points",{
+		eventListeners:{
+		    'featureselected':function(evt){
+			var feature = evt.feature;
+			var image_url = feature.attributes.image1_url || "None"
+			var observations = feature.attributes.observations || []
+			var table = '<table>';
+			table += "<tr><td>Id:</td><td>" + feature.attributes.id + "</td></tr>"
+			table += "<tr><td>Name:</td><td>" + feature.attributes.name + "</td></tr>"
+			
+			$.each(observations, function(key, observation) {
+				table += "<tr><td>" + observation.type + "</td><td>" + observation.value + "</td></tr>"
+			});
+			table += "</table>"
+			var popup = new OpenLayers.Popup.FramedCloud("popup",
+			    OpenLayers.LonLat.fromString(feature.geometry.toShortString()),
+			    null,
+			    "<div style='font-size:.8em'><img src='" + image_url + "'><br>" + table + "</div>",
+			    null,
+			    true
+			);
+			feature.popup = popup;
+			map.addPopup(popup);
+		    },
+		    'featureunselected':function(evt){
+			var feature = evt.feature;
+			map.removePopup(feature.popup);
+			feature.popup.destroy();
+			feature.popup = null;
+		    }
+		}
+        });
+
+        $.getJSON(obs_url, function(result){
+		console.log("fetched");
+                $.each(result.stations, function(key, station) {
+			console.log( 'Adding ' + key + ': ' + station.name + " (" + station.lat + "," + station.lon + ")" );
+			var fill = '#000000'
+			if ( station.hasOwnProperty('observations') ) {
+				fill = '#008040'
+			}
+			vector.addFeatures(new OpenLayers.Feature.Vector(
+		  	      	 		new OpenLayers.Geometry.Point(station.lon, station.lat),
+				      		station,
+						{   fillColor : fill,
+						    fillOpacity : 0.8,                    
+						    strokeColor : "#ee9900",
+						    strokeOpacity : 1,
+						    strokeWidth : 1,
+						    pointRadius : 8
+						}
+					  	)
+			);
+		});
+        });
+
+
+	// create the select feature control
+	var selector = new OpenLayers.Control.SelectFeature(vector,{
+		click:true,
+		autoActivate:true
+	}); 
+	map.addLayer(vector);
+
+        $.getJSON("/api/radar/list/US?imgno=1", function(result){
+                latestusradar = result.radar_url + '/' + result.image_sequence[0]
+                var usradar = new OpenLayers.Layer.Image(
+                    'US Radar',
+                    latestusradar,
+                    new OpenLayers.Bounds(-126, 24, -66, 50),
+                    new OpenLayers.Size(984,544),
+                    {isBaseLayer: false}
+                );
+                map.addLayer(usradar);
+        });
+        $.getJSON("/api/radar/list/UK?imgno=1", function(result){
+                latestusradar = result.radar_url + '/' + result.image_sequence[0]
+                var ukradar = new OpenLayers.Layer.Image(
+                    'UK Radar',
+                    latestusradar,
+                    new OpenLayers.Bounds(-12, 48, 5, 61),
+                    new OpenLayers.Size(531,708),
+                    {isBaseLayer: false}
+                );
+                map.addLayer(ukradar);
+        });
+	map.addControl(selector);
+        map.addControl(new OpenLayers.Control.LayerSwitcher());
+	//map.setCenter(new OpenLayers.LonLat(-4, 54), 7);
+      </script>
+
+</body>
+</html>
+

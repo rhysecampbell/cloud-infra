@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+
+use DBI;
+
+$currentTime=time;
+
+print "Current time is $currentTime\n";
+
+# connect
+my $dbh = DBI->connect("DBI:Pg:dbname=weatherzones;host=db.vaicld.com;port=6544", "polywrite", "{{ postgres_users.polywrite.password }}", {'RaiseError' => 1});
+# my $dbh = DBI->connect("DBI:Pg:dbname=weatherzones;host=localhost", "postgres", "polypass", {'RaiseError' => 1});
+
+# delete any alert that is expired or with state "CAN" (cancelled)
+my $sth = $dbh->prepare("delete from dynamic.nwsalerts where exptime<$currentTime");
+$sth->execute();
+my $sth = $dbh->prepare("delete from dynamic.nwsalerts where alertstate='CAN'");
+$sth->execute();
+my $sth = $dbh->prepare("update dynamic.nwsalerts set geom = ST_CollectionExtract(ST_MakeValid(geom), 3) where ST_IsValidReason(geom) != 'Valid Geometry'");
+$sth->execute();
+
+
+# clean up
+$dbh->disconnect();

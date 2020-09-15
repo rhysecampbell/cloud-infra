@@ -1,0 +1,101 @@
+---
+- name: Remove official letsencrypt client
+  file: path=/opt/letsencrypt state=absent
+  tags: letsencrypt
+  register: oldletsencryptremoved
+
+# The following task handles upgrade from letsencrypt to acmetool.
+# The HAProxy letsencrypt backend won't be set up yet so we need to temporarily disable haproxy
+# so that letsencrypt can serve requests itself.
+- name: Stop HAProxy
+  service: name=haproxy state=stopped
+  when: oldletsencryptremoved | changed
+
+- name: Copy acmetool
+  unarchive: src=acmetool-{{ acmetoolversion}}.tar.gz dest=/opt creates=/opt/acmetool-{{ acmetoolversion}}/bin/acmetool
+  tags: letsencrypt
+  notify: acmetool_reconcile
+
+- name: Create acmetool link
+  file: path=/usr/local/bin/acmetool src=/opt/acmetool-{{ acmetoolversion}}/bin/acmetool state=link
+  tags: letsencrypt
+  notify: acmetool_reconcile
+
+- name: Create acmetool directories
+  file: path={{ item }} mode=755 state=directory
+  with_items:
+      - /usr/libexec/acme
+      - /usr/libexec/acme/hooks
+      - /var/lib/acme
+      - /var/lib/acme/desired
+      - /var/lib/acme/conf
+  tags: letsencrypt
+
+- name: Install hooks
+  copy: src=hooks/{{ item }} dest=/usr/libexec/acme/hooks/{{ item }} mode=4750
+  with_items:
+      - reload
+      - haproxy
+
+- name: Install hook configuration
+  lineinfile: dest=/etc/default/acme-reload regexp="^{{ item.key }}=" line="{{ item.key }}={{ item.value }}" create=yes
+  with_items:
+      - {'key': 'HAPROXY_ALWAYS_GENERATE', 'value': 'true'}
+      - {'key': 'SERVICES', 'value': 'haproxy'}
+
+- name: acmetool template files
+  template: src={{ item.template }}.j2 dest={{ item.path }}
+  with_items:
+      - {'template': 'desired', 'path': '/var/lib/acme/desired/ansible'}
+      - {'template': 'target', 'path': '/var/lib/acme/conf/target'}
+      - {'template': 'response', 'path': '/var/lib/acme/conf/responses'}
+  tags: letsencrypt
+  notify: acmetool_reconcile
+
+- name: acmetool quickstart
+  command: /usr/local/bin/acmetool --batch quickstart
+  args:
+      creates: /var/lib/acme/accounts
+  when: letsencrypt | bool
+
+- name: iptables external
+  command: /sbin/iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT -m comment --comment "ansible-tmp-letsencrypt"
+  when: letsencrypt | bool
+  changed_when: False
+
+- name: acmetool firstrun
+  command: /usr/local/bin/acmetool --batch reconcile
+  args:
+      creates: /var/lib/acme/live/{{ ansible_nodename }}
+  when: letsencrypt | bool
+
+- name: Drop iptables rule
+  service: name=iptables state=reloaded
+  changed_when: False
+  when: letsencrypt | bool
+
+- name: Cron letsencrypt
+  cron: name="Cron letsencrypt"
+        minute="0"
+        hour="12"
+        user="root"
+        cron_file="ansible_letsencrypt"
+        job="/usr/local/bin/acmetool --batch reconcile --xlog.severity=debug --xlog.file=/var/log/acme.log --xlog.fileseverity=DEBUG"
+  when: letsencrypt | bool
+  tags: letsencrypt
+
+- name: Cron letsencrypt environment
+  cron:
+      name: PATH
+      env: yes
+      value: /bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+      user: root
+      cron_file: ansible_letsencrypt
+
+- name: Disable Cron letsencrypt
+  cron: name="Cron letsencrypt"
+        user="root"
+        cron_file="ansible_letsencrypt"
+        state=absent
+  when: not letsencrypt | bool
+  tags: letsencrypt

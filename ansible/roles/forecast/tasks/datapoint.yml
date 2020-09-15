@@ -1,0 +1,32 @@
+---
+- name: Required directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/vaisala-config/do-fc2obs
+    - /etc/vaisala-config/do-sendcc/fcast
+    - /home/data
+    - /home/data/fc2obs
+    - /home/data/fc2obs/landing
+    - /home/data/fc2obs/output
+    - /home/data/fc2obs/success
+    - /home/data/fc2obs/error
+
+- name: fc2obs out_ directories
+  file: path=/home/data/fc2obs/output/out_{{ item }} state=directory
+  with_items: [ '01', '02', '03', '04', '05', '06', '07', '08', '09', '10' ]
+
+- name: Copy fc2obs
+  copy: src=fc2obs dest=/usr/local/bin/fc2obs mode=0755
+
+- name: Copy datapoint script
+  copy: src=get_datapoint.sh dest=/usr/local/bin/get_datapoint.sh mode=0755
+
+- name: cron datapoint script
+  cron: name="fetch & process datapoint" cron_file=ansible_datapoint job="/usr/local/bin/get_datapoint.sh >/dev/null 2>&1" minute="10" hour="*/3" user="root"
+
+- name: Copy datapoint config
+  copy: src=datapoint.conf dest=/etc/vaisala-config/do-fc2obs/datapoint.conf
+
+- name: sendcc fcast config
+  template: src=sendcc-fcast.conf.j2 dest=/etc/vaisala-config/do-sendcc/fcast/fcast_{{ item }}.conf
+  with_items: [ '01', '02', '03', '04', '05', '06', '07', '08', '09', '10' ]

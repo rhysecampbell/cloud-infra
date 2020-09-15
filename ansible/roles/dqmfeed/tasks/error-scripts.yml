@@ -1,0 +1,39 @@
+---
+- name: Install required packages
+  yum: name={{ item }} state=present
+  with_items:
+      - perl-CGI
+      - python-passlib
+
+- name: Copy scripts
+  copy: src=error-scripts dest=/opt mode=0755
+
+- name: Copy css
+  copy: src=error-css/ dest=/var/www/html/error-scripts/css/ mode=0755
+
+- name: Copy cgis
+  copy: src=error-cgi dest=/var/www/cgi-bin mode=0755
+
+- name: Cron scripts
+  cron:
+    minute: "{{ item.minute }}"
+    hour: "{{ item.hour }}"
+    user: root
+    cron_file: ansible_error-scripts
+    job: "/opt/error-scripts/{{ item.script }} >/tmp/{{ item.script }}.log 2>&1"
+    name: "{{ item.script }}"
+    state: "{{ item.state | default('present') }}"
+  with_items:
+      - {'script': 'DQM-parse.pl', 'hour': 0, 'minute': 5, 'state': 'absent'}
+      - {'script': 'errorsWithSites.pl', 'hour': 0, 'minute': 10, 'state': 'absent'}
+      - {'script': 'oldResultCleanup.sh', 'hour': 1, 'minute': 15}
+
+- name: results directory
+  file: path={{ item }} state=directory 
+  with_items:
+      - /var/www/html/error-scripts/results
+      - /var/www/html/error-scripts/errorsBySite
+      - /var/www/html/error-scripts/errorLogs
+
+- name: httpd passwords
+  htpasswd: path=/etc/httpd/passwd name=logview password={{ logview_password | default("CHANGE_ME") }}

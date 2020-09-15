@@ -1,0 +1,95 @@
+---
+- name: schema directory
+  file: path=/opt/schemas owner=postgres state=directory
+
+- name: initdb
+  command: service postgresql-9.3 initdb
+  args:
+    creates: /var/lib/pgsql/9.3/data/base
+    warn: False
+
+- name: install postgresql configuration files
+  template: src={{ item }}.j2 dest=/var/lib/pgsql/9.3/data/{{ item }} owner=postgres group=postgres mode=600
+  notify: restart postgres
+  with_items:
+    - postgresql.conf
+    - pg_hba.conf
+
+- name: start & enable postgres
+  service: name=postgresql-9.3 enabled=yes state=started
+
+- name: set postgres password
+  command: psql -w -U postgres -d postgres -c "alter user postgres with password '{{ postgres_password }}';"
+  changed_when: False
+  become_user: postgres
+
+- name: createdb
+  postgresql_db: name={{ item }} state=present login_host=localhost login_user=postgres login_password={{ postgres_password }}
+  with_items:
+    - imagedb
+
+- name: Install extensions
+  shell: psql -w -U postgres -d {{ item[0] }} -c "CREATE EXTENSION IF NOT EXISTS {{ item[1] }};" && touch /opt/schemas/{{ item[1] }}_{{ item[0] }}
+  with_nested:
+      - [ 'imagedb', ]
+      - [ 'pg_repack' ]
+  args:
+      creates: /opt/schemas/{{ item[1] }}_{{ item[0] }}
+  become_user: postgres
+  tags:
+      - pg_repack
+
+- name: fdw settings
+  template: src=fdw.sql.j2 dest=/opt/schemas/fdw.sql
+  notify: update fdw
+
+- name: copy schemas
+  copy: src=schemas/{{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items:
+    - imagedb
+
+- name: install schemas
+  shell: psql -w -U postgres -d {{ item }} -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.sql.used
+  args:
+      creates: /opt/schemas/{{ item }}.sql.used
+  with_items:
+    - imagedb
+  become_user: postgres
+
+- name: partition management script
+  copy: src=manage_partitions_imagedb.sh dest=~postgres/manage_partitions.sh mode=0755 owner=postgres group=postgres
+  tags:
+      - pg_repack
+
+- name: cron partition management
+  cron: name="manage partitions" user=postgres cron_file=ansible_manage-partitions job="~postgres/manage_partitions.sh >/dev/null 2>&1" special_time=daily
+  tags:
+      - pg_repack
+
+- name: create imagedb partitions
+  command: ~postgres/manage_partitions.sh
+  args:
+      creates: /opt/schemas/first_partitions_imagedb_created
+  become_user: postgres
+
+- name: create nagios user
+  postgresql_user: name=nagios state=present login_host=localhost login_user=postgres login_password={{ postgres_password }} role_attr_flags="LOGIN,NOCREATEDB,NOCREATEROLE,NOREPLICATION" password={{ postgres_users['nagios']['password'] }}
+
+- name: copy sql upgrades
+  copy: src={{ item }}.sql dest=/opt/schemas/{{ item }}.sql
+  with_items:
+    - qm.identity-1
+
+- name: run sql upgrades
+  shell: psql -w -U postgres -d imagedb -f /opt/schemas/{{ item }}.sql && touch /opt/schemas/{{ item }}.used
+  with_items:
+    - qm.identity-1
+  args:
+      creates: /opt/schemas/{{ item }}.used
+  become_user: postgres
+
+- name: Create archive folder
+  file: path={{ item }} owner=postgres state=directory
+  with_items:
+      - /mnt/archive
+      - /mnt/archive/current

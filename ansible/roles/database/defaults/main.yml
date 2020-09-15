@@ -1,0 +1,10 @@
+---
+postgres_rsa: "{{ lookup('file', 'postgres_rsa.pub') }}"
+postgres_password: CHANGE_ME
+postgres_users:
+  nagios:
+    password: "{{ vault_postgres_nagios_password | default('CHANGE_ME') }}"
+    roles: obsread
+  pgsqlchkusr:
+    password: "{{ vault_postgres_pgsqlchkusr_password | default('CHANGE_ME') }}"
+    roles: pgsqlchkgrp
